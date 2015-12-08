@@ -1,0 +1,8 @@
+{
+    "servers" : {
+        "webApp" : {
+            "name" : "test.local",
+            "port" : "80"
+        }
+    }
+}
