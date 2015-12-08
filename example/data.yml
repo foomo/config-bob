@@ -1,0 +1,4 @@
+servers:
+  webApp:
+    name: "test.local-yml"
+    port: "80"

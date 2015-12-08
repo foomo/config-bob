@@ -1,8 +1,8 @@
 {
     "hello" : {
         "test" : {
-            "user" : "{{.other-config.hello.test.user}}",
-            "password" : "{{.other-config.hello.test.user}}"
+            "user" : "{{.other.config.hello.test.user}}",
+            "password" : "{{.other.config.hello.test.user}}"
         }
     }
 }
