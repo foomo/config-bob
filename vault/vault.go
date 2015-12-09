@@ -12,17 +12,6 @@ import (
 
 const vaultAddr = "127.0.0.1:8200"
 
-const vaultServerConfigTemplate = `
-backend "file" {
-  path = "{{.path}}"
-}
-
-listener "tcp" {
-  address = {{.address}}
-  tls_disable = 1
-}
-`
-
 // GetVaultVersion get the version of the installed vault command line program
 func GetVaultVersion() (version string, err error) {
 	out, err := exec.Command("vault", "-v").Output()
@@ -54,7 +43,7 @@ func CallVault(path string) (response *http.Response, err error) {
 func StartAndInit(vaultFolder string) error {
 	envVaultAddr := os.Getenv("VAULT_ADDR")
 	if len(envVaultAddr) == 0 {
-		os.Setenv("VAULT_ADDR", "http://"+vaultAddr)
+		os.Setenv("VAULT_ADDR", getLocalVaultAddress())
 	}
 	response, err := CallVault("/v1/sys/init")
 	if err != nil {

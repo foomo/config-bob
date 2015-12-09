@@ -1,51 +1,114 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"log"
 	"os"
+	"os/exec"
 
 	"github.com/foomo/config-bob/builder"
 	"github.com/foomo/config-bob/vault"
 )
 
-type stringList []string
+const helpCommands = `
+Commands:
+    build         my main task
+    vault-local   set up a local vault
+`
 
-func (l *stringList) String() string {
-	return fmt.Sprint(*l)
+func help() {
+	fmt.Println("usage:", os.Args[0], "<command>")
+	fmt.Println(helpCommands)
 }
 
-func (l *stringList) Set(value string) error {
-	*l = append(*l, value)
-	return nil
-}
+const (
+	commandBuild       = "build"
+	commandVaultLocal  = "vault-local"
+	commandVaultRemote = "vault-remote"
+)
 
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case "vault-remote":
+		case "bash":
+			fmt.Println("enter your vault_token please")
+			/*
+				scanner := bufio.NewScanner(os.Stdin)
+				scanner.Split(bufio.ScanBytes)
+				for scanner.Scan() {
+					b := scanner.Bytes()
+					if len(b) > 0 {
+						log.Println(b)
+					}
+					//fmt.Println(scanner.Text()) // Println will add back the final '\n'
+				}
+				if err := scanner.Err(); err != nil {
+					fmt.Fprintln(os.Stderr, "reading standard input:", err)
+				}
+			*/
+			os.Setenv("FOO", "BAR")
+			fmt.Println("setting env:", "foo", "bar")
+			fmt.Println("starting a shell:", os.Getenv("SHELL"), "--login")
+			cmd := exec.Command(os.Getenv("SHELL"), "--login")
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err := cmd.Run()
+			log.Println(err)
+		case commandVaultRemote:
 			// VAULT_ADDR
 			// VAULT_TOKEN
-		case "vault-local":
-			//flagVaultDir := flag.String("vault-dir", "vault", "vault db folder")
+		case commandVaultLocal:
 			if len(os.Args) == 3 {
-				err := vault.StartAndInit(os.Args[1])
-				if err != nil {
-					fmt.Println(err.Error())
+				vaultFolder := os.Args[2]
+				vault.LocalSetEnv()
+				if !vault.LocalIsSetUp(vaultFolder) {
+					fmt.Println("setting up vault tree")
+					err := vault.LocalSetup(vaultFolder) //StartAndInit(os.Args[2])
+					if err != nil {
+						fmt.Println(err.Error())
+						os.Exit(1)
+					}
+				}
+				if vault.LocalIsRunning() {
+					fmt.Println("there is already a vault running aborting")
 					os.Exit(1)
 				}
+				fmt.Println("vault not running - trying to start it")
+				vaultCommand, chanVaultErr, vaultErr := vault.LocalStart(vaultFolder)
+				if vaultErr != nil {
+					fmt.Println("could not start local vault server:", vaultErr.Error())
+					os.Exit(1)
+				}
+
+				log.Println("launching new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
+
+				cmd := exec.Command(os.Getenv("SHELL"), "--login")
+				go func() {
+					vaultRunErr := <-chanVaultErr
+					cmd.Process.Kill()
+					fmt.Println("vault died on us")
+					if vaultRunErr != nil {
+						fmt.Println("vault error", vaultRunErr.Error())
+					}
+				}()
+				cmd.Stdin = os.Stdin
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				runErr := cmd.Run()
+				if runErr != nil {
+					fmt.Println("shell exit:", runErr.Error())
+				}
+				killErr := vaultCommand.Process.Kill()
+				if killErr != nil {
+					log.Println("could not kill vault process:", killErr.Error())
+				}
+				fmt.Println("config bob says bye, bye")
 			} else {
-				fmt.Println("usage: ", os.Args[0], " path/to/vault/folder")
+				fmt.Println("usage: ", os.Args[0], commandVaultLocal, "path/to/vault/folder")
 				os.Exit(1)
 			}
-		case "_______LIST":
-			os.Args = os.Args[1:]
-			var sourceFolders stringList
-			flag.Var(&sourceFolders, "f", "source folders")
-			data := flag.String("data-file", "data.yml", "data source file")
-			flag.Parse()
-			fmt.Println("time to build:", sourceFolders, *data)
-		case "build":
+		case commandBuild:
 			builderArgs, err := builder.GetBuilderArgs(os.Args[2:])
 			if err != nil {
 				fmt.Println()
@@ -61,7 +124,9 @@ func main() {
 				fmt.Println(writeError)
 			}
 		default:
-			fmt.Println("help")
+			help()
 		}
+	} else {
+		help()
 	}
 }
