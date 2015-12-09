@@ -118,7 +118,7 @@ func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error, err erro
 }
 
 func LocalIsRunning() bool {
-	_, err := CallVault("/v1/sys/init")
+	_, err := CallVault("/v1/seal-status")
 	return err == nil
 }
 

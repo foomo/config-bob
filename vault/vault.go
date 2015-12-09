@@ -1,8 +1,8 @@
 package vault
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -11,6 +11,10 @@ import (
 )
 
 const vaultAddr = "127.0.0.1:8200"
+
+type readResponse struct {
+	Data map[string]string
+}
 
 // GetVaultVersion get the version of the installed vault command line program
 func GetVaultVersion() (version string, err error) {
@@ -26,8 +30,24 @@ func CheckEnv() bool {
 	return false
 }
 
-func GetSecret(path string) {
+// Read data from a vault - env vars need to be set
+func Read(path string) (secret map[string]string, err error) {
 	// curl -v  -H "X-Vault-Token: $VAULT_TOKEN" $VAULT_ADDR/v1/secret/schild/smtp
+	response, err := CallVault("/v1/" + path)
+	if err != nil {
+		return nil, err
+	}
+	jsonBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	response.Body.Close()
+	readResponse := &readResponse{}
+	jsonErr := json.Unmarshal(jsonBytes, &readResponse)
+	if jsonErr != nil {
+		return nil, jsonErr
+	}
+	return readResponse.Data, nil
 }
 
 func CallVault(path string) (response *http.Response, err error) {
@@ -38,24 +58,4 @@ func CallVault(path string) (response *http.Response, err error) {
 	}
 	request.Header.Add("X-Vault-Token", os.Getenv("VAULT_TOKEN"))
 	return http.DefaultClient.Do(request)
-}
-
-func StartAndInit(vaultFolder string) error {
-	envVaultAddr := os.Getenv("VAULT_ADDR")
-	if len(envVaultAddr) == 0 {
-		os.Setenv("VAULT_ADDR", getLocalVaultAddress())
-	}
-	response, err := CallVault("/v1/sys/init")
-	if err != nil {
-		// vault not running
-		return errors.New("vault not running: " + err.Error())
-	}
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return errors.New("could not read init response from vault :: " + err.Error())
-	}
-	response.Body.Close()
-
-	fmt.Println(string(body))
-	return nil
 }

@@ -22,49 +22,20 @@ func help() {
 }
 
 const (
-	commandBuild       = "build"
-	commandVaultLocal  = "vault-local"
-	commandVaultRemote = "vault-remote"
+	commandBuild      = "build"
+	commandVaultLocal = "vault-local"
 )
 
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case "bash":
-			fmt.Println("enter your vault_token please")
-			/*
-				scanner := bufio.NewScanner(os.Stdin)
-				scanner.Split(bufio.ScanBytes)
-				for scanner.Scan() {
-					b := scanner.Bytes()
-					if len(b) > 0 {
-						log.Println(b)
-					}
-					//fmt.Println(scanner.Text()) // Println will add back the final '\n'
-				}
-				if err := scanner.Err(); err != nil {
-					fmt.Fprintln(os.Stderr, "reading standard input:", err)
-				}
-			*/
-			os.Setenv("FOO", "BAR")
-			fmt.Println("setting env:", "foo", "bar")
-			fmt.Println("starting a shell:", os.Getenv("SHELL"), "--login")
-			cmd := exec.Command(os.Getenv("SHELL"), "--login")
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			err := cmd.Run()
-			log.Println(err)
-		case commandVaultRemote:
-			// VAULT_ADDR
-			// VAULT_TOKEN
 		case commandVaultLocal:
 			if len(os.Args) == 3 {
 				vaultFolder := os.Args[2]
 				vault.LocalSetEnv()
 				if !vault.LocalIsSetUp(vaultFolder) {
 					fmt.Println("setting up vault tree")
-					err := vault.LocalSetup(vaultFolder) //StartAndInit(os.Args[2])
+					err := vault.LocalSetup(vaultFolder)
 					if err != nil {
 						fmt.Println(err.Error())
 						os.Exit(1)
@@ -121,7 +92,10 @@ func main() {
 					os.Exit(1)
 				}
 				writeError := builder.WriteProcessingResult(builderArgs.TargetFolder, result)
-				fmt.Println(writeError)
+				if writeError != nil {
+					fmt.Println(writeError.Error())
+					os.Exit(1)
+				}
 			}
 		default:
 			help()

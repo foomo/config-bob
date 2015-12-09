@@ -2,9 +2,14 @@ package builder
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"path"
+	"strings"
 	"text/template"
+
+	"github.com/foomo/config-bob/vault"
 )
 
 type ProcessingResult struct {
@@ -47,6 +52,20 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 	return p, nil
 }
 
+func rawSecret(key string) (v string, err error) {
+	parts := strings.Split(key, ".")
+	if len(parts) == 2 {
+		secretData, err := vault.Read(parts[0])
+		if err != nil {
+			v = "secret retrieval error" + err.Error()
+			return v, errors.New(v)
+		}
+		return secretData[parts[1]], nil
+	}
+	v = "sytax error key must be \"path/to/secret.prop\""
+	return v, errors.New(v)
+}
+
 func processFile(filename string, data interface{}) (result []byte, err error) {
 	fileContents, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -54,7 +73,20 @@ func processFile(filename string, data interface{}) (result []byte, err error) {
 	}
 	t, err := template.New("temp").Funcs(template.FuncMap{
 		"secret": func(key string) (v string) {
-			return "secret for " + key
+			v, _ = rawSecret(key)
+			return v
+		},
+		"secretjs": func(key string) (v string) {
+			v, _ = rawSecret(key)
+			return template.JSEscapeString(v)
+		},
+		"secretjson": func(key string) (v string) {
+			raw, _ := rawSecret(key)
+			rawJSON, jsonErr := json.Marshal(raw)
+			if jsonErr != nil {
+				return jsonErr.Error()
+			}
+			return string(rawJSON)
 		},
 	}).Parse(string(fileContents))
 	out := bytes.NewBuffer([]byte{})

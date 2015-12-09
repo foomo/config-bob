@@ -1,4 +1,6 @@
 foo: {{.Foo.Secret}}
 account:
-  name: {{ secret "test/smtp.name" }}
-  password: {{ secret "test/smtp.password" }}
+  name: {{ secret "secret/smtp.name" }}
+  password: {{ secret "secret/smtp.password" }}
+payment:
+  token: {{ secret "secret/payment.token" }}
