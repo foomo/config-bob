@@ -5,7 +5,7 @@
             "password" : "{{.other.config.hello.test.user}}"
         },
         "payment" : {
-            "token": {{ secretjson "secret/payment.token" }}
+            "token": {{ secret_json "secret/payment.token" }}
         }
     }
 }

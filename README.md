@@ -1,13 +1,20 @@
-# Hi my name is Bob and I build configurations
+# Bob renders config hierarchies
 
-Bob helps you to render directory trees of configurations using [golangs templating engine](http://golang.org/pkg/text/template). He will render recursively over a given directory hierarchy executing all files as templates.
+Bob helps you to render directory trees of configurations using [golangs templating engine](http://golang.org/pkg/text/template). He renders recursively over an arbitrary number of directory hierarchies executing all files as templates.
 
-The result will be written into target directory.
+The result will be written into one target directory.
+
+## Example call
 
 ```bash
-config-bob build -data path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
+config-bob build path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
 ```
 
+## Intergration with vault
+
+### Running a local vault with Bobs help
+
+### Bob supports secrets from vault
 
 ```bash
 #

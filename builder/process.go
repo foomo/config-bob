@@ -72,15 +72,19 @@ func processFile(filename string, data interface{}) (result []byte, err error) {
 		return
 	}
 	t, err := template.New("temp").Funcs(template.FuncMap{
+		"yaml_string": func(key string) (v string) {
+			v, _ = rawSecret(key)
+			return v
+		},
 		"secret": func(key string) (v string) {
 			v, _ = rawSecret(key)
 			return v
 		},
-		"secretjs": func(key string) (v string) {
+		"secret_js": func(key string) (v string) {
 			v, _ = rawSecret(key)
 			return template.JSEscapeString(v)
 		},
-		"secretjson": func(key string) (v string) {
+		"secret_json": func(key string) (v string) {
 			raw, _ := rawSecret(key)
 			rawJSON, jsonErr := json.Marshal(raw)
 			if jsonErr != nil {

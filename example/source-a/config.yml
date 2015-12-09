@@ -1,3 +1,4 @@
+yaml: {{ yaml_string .yamlkiller }}
 foo: {{.Foo.Secret}}
 account:
   name: {{ secret "secret/smtp.name" }}

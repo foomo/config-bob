@@ -26,11 +26,26 @@ const (
 	commandVaultLocal = "vault-local"
 )
 
+func isHelpFlag(arg string) bool {
+	switch arg {
+	case "--help", "-help", "-h":
+		return true
+	}
+	return false
+}
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case commandVaultLocal:
+			vaultLocalUsage := func() {
+				fmt.Println("usage: ", os.Args[0], commandVaultLocal, "path/to/vault/folder")
+				os.Exit(1)
+			}
 			if len(os.Args) == 3 {
+				if isHelpFlag(os.Args[2]) {
+					vaultLocalUsage()
+				}
 				vaultFolder := os.Args[2]
 				vault.LocalSetEnv()
 				if !vault.LocalIsSetUp(vaultFolder) {
@@ -76,15 +91,28 @@ func main() {
 				}
 				fmt.Println("config bob says bye, bye")
 			} else {
-				fmt.Println("usage: ", os.Args[0], commandVaultLocal, "path/to/vault/folder")
-				os.Exit(1)
+				vaultLocalUsage()
 			}
 		case commandBuild:
+			buildUsage := func() {
+				fmt.Println(
+					"usage: ",
+					os.Args[0],
+					commandBuild,
+					"path/to/source-folder-a",
+					"[ path/to/source-folder-b, ... ]",
+					"[ path/to/data-file.json | data-file.yaml ]",
+					"path/to/target/dir",
+				)
+				os.Exit(1)
+			}
+			if isHelpFlag(os.Args[2]) {
+				buildUsage()
+			}
 			builderArgs, err := builder.GetBuilderArgs(os.Args[2:])
 			if err != nil {
-				fmt.Println()
-				fmt.Println("build usage", err.Error())
-				os.Exit(1)
+				log.Println(err.Error())
+				buildUsage()
 			} else {
 				result, err := builder.Build(builderArgs)
 				if err != nil {

@@ -4,5 +4,6 @@
             "name" : "<test.local>",
             "port" : "80"
         }
-    }
+    },
+    "yamlkiller" : "\nkill\nyou: are: dead\n"
 }
