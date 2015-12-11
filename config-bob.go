@@ -121,11 +121,12 @@ func main() {
 				}
 				writeError := builder.WriteProcessingResult(builderArgs.TargetFolder, result)
 				if writeError != nil {
-					fmt.Println(writeError.Error())
+					fmt.Println("could not write prcessing result fto fs", writeError.Error())
 					os.Exit(1)
 				}
 			}
 		default:
+			fmt.Println("unknown command", "\""+os.Args[1]+"\"")
 			help()
 		}
 	} else {
