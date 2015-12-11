@@ -41,7 +41,16 @@ func ReadSecret(path string) (secret map[string]string, err error) {
 		return nil, err
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, errors.New("could not get secret " + path + " : " + response.Status)
+		responseBody := "empty response body"
+		if response != nil {
+			bytes, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				responseBody = "could not read response body: " + err.Error()
+			} else {
+				responseBody = string(bytes)
+			}
+		}
+		return nil, errors.New("could not get secret " + path + " : " + response.Status + " :: " + responseBody)
 	}
 	jsonBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
