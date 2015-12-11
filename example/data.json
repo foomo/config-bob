@@ -5,5 +5,10 @@
             "port" : "80"
         }
     },
-    "yamlkiller" : "\nkill\nyou: are: dead\n"
+    "str" : "i am a string",
+    "int" : 1,
+    "float" : 1.345678,
+    "bool" : false,
+    "array": [1,2,"3",4],
+    "yamlKiller" : "\n:foo\nbar\njkljkljkljkljkl:]|"
 }

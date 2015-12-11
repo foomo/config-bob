@@ -116,7 +116,7 @@ func main() {
 			} else {
 				result, err := builder.Build(builderArgs)
 				if err != nil {
-					fmt.Println(err.Error())
+					fmt.Println("a build error has occurred", err.Error())
 					os.Exit(1)
 				}
 				writeError := builder.WriteProcessingResult(builderArgs.TargetFolder, result)

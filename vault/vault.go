@@ -30,12 +30,18 @@ func CheckEnv() bool {
 	return false
 }
 
-// Read data from a vault - env vars need to be set
-func Read(path string) (secret map[string]string, err error) {
+// ReadSecret data from a vault - env vars need to be set
+func ReadSecret(path string) (secret map[string]string, err error) {
+	if len(os.Getenv("VAULT_TOKEN")) == 0 {
+		return nil, errors.New("VAULT_TOKEN is missing in env - can not call vault and ask for secrets")
+	}
 	// curl -v  -H "X-Vault-Token: $VAULT_TOKEN" $VAULT_ADDR/v1/secret/schild/smtp
 	response, err := CallVault("/v1/" + path)
 	if err != nil {
 		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New("could not get secret " + path + " : " + response.Status)
 	}
 	jsonBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
@@ -51,11 +57,16 @@ func Read(path string) (secret map[string]string, err error) {
 }
 
 func CallVault(path string) (response *http.Response, err error) {
-	request, err := http.NewRequest("GET", os.Getenv("VAULT_ADDR")+path, nil)
+	addr := os.Getenv("VAULT_ADDR")
+	if len(addr) == 0 {
+		return nil, errors.New("VAULT_ADDR missing in env - can not call vault")
+	}
+	token := os.Getenv("VAULT_TOKEN")
+	request, err := http.NewRequest("GET", addr+path, nil)
 
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("X-Vault-Token", os.Getenv("VAULT_TOKEN"))
+	request.Header.Add("X-Vault-Token", token)
 	return http.DefaultClient.Do(request)
 }
