@@ -38,6 +38,7 @@ func (p *ProcessingResult) ContainsFolder(someFolder string) bool {
 }
 
 func processFolder(folderPath string, data interface{}) (result *ProcessingResult, err error) {
+	folderPath = path.Clean(folderPath)
 	p := &ProcessingResult{
 		Folders: getFolders(folderPath),
 		Files:   make(map[string][]byte),
@@ -87,8 +88,10 @@ func processFile(filename string, data interface{}) (result []byte, err error) {
 		return
 	}
 	t, err := template.New(filename).Funcs(TemplateFuncs).Parse(string(fileContents))
+	if err != nil {
+		return
+	}
 	out := bytes.NewBuffer([]byte{})
-
 	err = t.Execute(out, data)
 	return out.Bytes(), err
 }

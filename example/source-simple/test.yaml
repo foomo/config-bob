@@ -1,0 +1,2 @@
+foo: "bar"
+server: {{ yaml_string .servers.webApp.name }}

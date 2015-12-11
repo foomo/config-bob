@@ -1,0 +1,2 @@
+foo: "bar"
+server: {{ servers.webApp.name }}

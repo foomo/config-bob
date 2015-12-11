@@ -44,6 +44,10 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	fmt.Println(line)
 	fmt.Println("building folder structure:")
 	fmt.Println(line)
+	err := os.MkdirAll(targetFolder, 0744)
+	if err != nil {
+		return errors.New("could not create target folder")
+	}
 	for _, folder := range result.Folders {
 		folder = path.Join(targetFolder, folder)
 		fmt.Println(folder)

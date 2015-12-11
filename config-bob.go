@@ -116,12 +116,12 @@ func main() {
 			} else {
 				result, err := builder.Build(builderArgs)
 				if err != nil {
-					fmt.Println("a build error has occurred", err.Error())
+					fmt.Println("a build error has occurred:", err.Error())
 					os.Exit(1)
 				}
 				writeError := builder.WriteProcessingResult(builderArgs.TargetFolder, result)
 				if writeError != nil {
-					fmt.Println("could not write prcessing result fto fs", writeError.Error())
+					fmt.Println("could not write processing result to fs:", writeError.Error())
 					os.Exit(1)
 				}
 			}
