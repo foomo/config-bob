@@ -14,6 +14,7 @@ const helpCommands = `
 Commands:
     build         my main task
     vault-local   set up a local vault
+    htpasswd      update htpasswd files
 `
 
 func help() {
@@ -24,6 +25,7 @@ func help() {
 const (
 	commandBuild      = "build"
 	commandVaultLocal = "vault-local"
+	commandHtpasswd   = "htpasswd"
 )
 
 func isHelpFlag(arg string) bool {
@@ -37,6 +39,16 @@ func isHelpFlag(arg string) bool {
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case commandHtpasswd:
+			htpasswdLocalUsage := func() {
+				fmt.Println("usage: ", os.Args[0], commandHtpasswd, "path/to/htpasswd.yaml")
+				os.Exit(1)
+			}
+			if len(os.Args) != 3 {
+				htpasswdLocalUsage()
+			}
+			config, err := vault.ReadHtpasswdConfigFromFile(os.Args[2])
+			fmt.Println(config, err)
 		case commandVaultLocal:
 			vaultLocalUsage := func() {
 				fmt.Println("usage: ", os.Args[0], commandVaultLocal, "path/to/vault/folder")
