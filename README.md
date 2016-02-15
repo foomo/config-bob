@@ -35,6 +35,10 @@ We expect this list of helpers to grow.
 
 ## Updating htpasswd files
 
+```bash
+config-bob vault-htpasswd path/to/htpasswd.yml
+```
+
 Config bob knows how to sync vault with htpasswd files.
 
 Example config file contents:
@@ -46,12 +50,6 @@ relative/path/to/htpasswd-file:
   - secret/bar
 /absolute/path/to/other/htpasswd-file:
   - secret/baz
-```
-
-Example call:
-
-```bash
-config-bob vault-htpasswd path/to/htpasswd.yml
 ```
 
 Behaviour:

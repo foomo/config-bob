@@ -1,16 +1,14 @@
 package vault
 
 import (
-	"encoding/json"
 	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/foomo/config-bob/vaultdummy"
 	"github.com/foomo/htpasswd"
 )
 
@@ -20,31 +18,8 @@ func poe(err error) {
 	}
 }
 
-func dummyVaultServer(handler func(r *http.Request) interface{}) *httptest.Server {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data := handler(r)
-		response := map[string]interface{}{
-			"data": data,
-		}
-		responseBytes, err := json.Marshal(response)
-		if err != nil {
-			panic(err)
-		}
-		w.Write(responseBytes)
-	}))
-	os.Setenv("VAULT_TOKEN", "dummy-token")
-	os.Setenv("VAULT_ADDR", ts.URL)
-	return ts
-}
-
 func TestHtpasswd(t *testing.T) {
-	ts := dummyVaultServer(func(r *http.Request) interface{} {
-		response := map[string]string{
-			"user":     "user-from" + r.URL.Path,
-			"password": "dummy-password",
-		}
-		return response
-	})
+	ts := vaultdummy.DummyVaultServerSecretEcho()
 	defer ts.Close()
 	testDir, err := ioutil.TempDir(os.TempDir(), "htpasswd-config-test-dir-")
 	poe(err)
