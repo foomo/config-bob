@@ -1,3 +1,5 @@
+[![Travis CI](https://travis-ci.org/foomo/config-bob.svg?branch=master)](https://travis-ci.org/foomo/config-bob)
+
 # Bob renders config hierarchies
 
 Bob helps you to render directory trees of configurations using [golangs templating engine](http://golang.org/pkg/text/template). He renders recursively over an arbitrary number of directory hierarchies executing all files as templates.
@@ -30,6 +32,40 @@ Apart from standard templating functions we have added a few extra ones, which s
 ```
 
 We expect this list of helpers to grow.
+
+## Updating htpasswd files
+
+Config bob knows how to sync vault with htpasswd files.
+
+Example config file contents:
+
+```yaml
+# example htpasswd.yml
+relative/path/to/htpasswd-file:
+  - secret/foo
+  - secret/bar
+/absolute/path/to/other/htpasswd-file:
+  - secret/baz
+```
+
+Example call:
+
+```bash
+config-bob vault-htpasswd path/to/htpasswd.yml
+```
+
+Behaviour:
+
+- creates all necessary folder and files
+- updates existing files with passwords from vault
+- fails, if passwords can not be updated
+- fails, if existing files can not be parsed
+
+How to add a compatible vault entry:
+
+```bash
+vault write secret/foo user=foo password=secret
+```
 
 ## Intergration with [vault](//vaultproject.io/)
 
