@@ -16,6 +16,7 @@ Commands:
     build           my main task
     vault-local     set up a local vault
     vault-htpasswd  update htpasswd files
+    version         display version number
 `
 
 func help() {
@@ -24,6 +25,7 @@ func help() {
 }
 
 const (
+	commandVersion    = "version"
 	commandBuild      = "build"
 	commandVaultLocal = "vault-local"
 	commandHtpasswd   = "vault-htpasswd"
@@ -40,6 +42,8 @@ func isHelpFlag(arg string) bool {
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case commandVersion:
+			fmt.Println("v0.1")
 		case commandHtpasswd:
 			htpasswdLocalUsage := func() {
 				fmt.Println("usage: ", os.Args[0], commandHtpasswd, "path/to/htpasswd.yaml")
