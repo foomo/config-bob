@@ -8,13 +8,14 @@ import (
 
 	"github.com/foomo/config-bob/builder"
 	"github.com/foomo/config-bob/vault"
+	"github.com/foomo/htpasswd"
 )
 
 const helpCommands = `
 Commands:
-    build         my main task
-    vault-local   set up a local vault
-    htpasswd      update htpasswd files
+    build           my main task
+    vault-local     set up a local vault
+    vault-htpasswd  update htpasswd files
 `
 
 func help() {
@@ -25,7 +26,7 @@ func help() {
 const (
 	commandBuild      = "build"
 	commandVaultLocal = "vault-local"
-	commandHtpasswd   = "htpasswd"
+	commandHtpasswd   = "vault-htpasswd"
 )
 
 func isHelpFlag(arg string) bool {
@@ -47,8 +48,13 @@ func main() {
 			if len(os.Args) != 3 {
 				htpasswdLocalUsage()
 			}
-			config, err := vault.ReadHtpasswdConfigFromFile(os.Args[2])
-			fmt.Println(config, err)
+			err := vault.WriteHtpasswdFiles(os.Args[2], htpasswd.HashBCrypt)
+			if err != nil {
+				fmt.Println("failed", err)
+				os.Exit(1)
+
+			}
+			fmt.Println("DONE")
 		case commandVaultLocal:
 			vaultLocalUsage := func() {
 				fmt.Println("usage: ", os.Args[0], commandVaultLocal, "path/to/vault/folder")
