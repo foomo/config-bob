@@ -57,7 +57,8 @@ func TestHtpasswd(t *testing.T) {
 func TestVaultVersion(t *testing.T) {
 	version, err := GetVaultVersion()
 	if err != nil {
-		t.Log("looks like vault is not installed or not in path")
+		t.Skip("looks like vault is not installed or not in path")
+		return
 	}
 	if len(version) < 1 {
 		t.Fatal("that version is very fishy")
