@@ -3,7 +3,6 @@ package vault
 import (
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"testing"
 
 	"gopkg.in/yaml.v2"
@@ -40,10 +39,11 @@ func TestHtpasswd(t *testing.T) {
 	poe(ioutil.WriteFile(testConfigFile.Name(), configBytes, 0600))
 	poe(WriteHtpasswdFiles(testConfigFile.Name(), htpasswd.HashBCrypt))
 
-	cmd := exec.Command("tree", testDir)
-	combined, err := cmd.CombinedOutput()
-	t.Log("tree", err, string(combined))
-
+	/*
+		cmd := exec.Command("tree", testDir)
+		combined, err := cmd.CombinedOutput()
+		t.Log("tree", err, string(combined))
+	*/
 	for htpasswdFile, secretPaths := range cnf {
 		passwords, err := htpasswd.ParseHtpasswdFile(htpasswdFile)
 		//poe(err)
@@ -57,7 +57,7 @@ func TestHtpasswd(t *testing.T) {
 func TestVaultVersion(t *testing.T) {
 	version, err := GetVaultVersion()
 	if err != nil {
-		t.Fatal("looks like vault is not installed or not in path")
+		t.Log("looks like vault is not installed or not in path")
 	}
 	if len(version) < 1 {
 		t.Fatal("that version is very fishy")
