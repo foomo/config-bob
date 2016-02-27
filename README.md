@@ -62,15 +62,15 @@ nested:
 {"hello":"test","nested":{"foo":"bar"}}
 
 // json indented parameters are prefix and indent
-{{ jsonindent . "  " "  " }}
+{{ jsonindent . "////" "+++|" }}
 
-// output - note that there is no indent in the first line
+// output - note that there is no prefix in the first line also see https://golang.org/pkg/encoding/json/#MarshalIndent
 {
-      "hello": "test",
-      "nested": {
-        "foo": "bar"
-    }
-  }
+////"hello": "test",
+////+++|"nested": {
+////+++|+++|"foo": "bar"
+////+++|}
+////}
 ```
 
 We expect this list of helpers to grow.
