@@ -87,7 +87,11 @@ func processFile(filename string, data interface{}) (result []byte, err error) {
 	if err != nil {
 		return
 	}
-	t, err := template.New(filename).Funcs(TemplateFuncs).Parse(string(fileContents))
+	return process(filename, string(fileContents), data)
+}
+
+func process(templName, templ string, data interface{}) (result []byte, err error) {
+	t, err := template.New(templName).Funcs(TemplateFuncs).Parse(templ)
 	if err != nil {
 		return
 	}

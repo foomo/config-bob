@@ -2,6 +2,9 @@ package builder
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 
@@ -10,16 +13,42 @@ import (
 
 // TemplateFuncs knock yourself out - this is what builder user for templating
 var TemplateFuncs = template.FuncMap{
-	"yaml_string": func(value string) (v string, err error) {
-		return yamlString(value)
+	"env": func(value string) (v string, err error) {
+		return os.Getenv(value), nil
 	},
-	"secret_yaml": func(key string) (v string, err error) {
-		v, err = rawSecret(key)
-		if err != nil {
-			return key, err
+	"indent": func(code, indent string) (string, error) {
+		lines := strings.Split(code, "\n")
+		indented := []string{}
+		for _, line := range lines {
+			indented = append(indented, indent+line)
 		}
-		return yamlString(v)
+		return strings.Join(indented, "\n"), nil
 	},
+	"yaml": func(value interface{}) (v string, err error) {
+		yamlBytes, err := yaml.Marshal(value)
+		if err != nil {
+			return fmt.Sprintf("%q", value), err
+		}
+		return strings.Trim(string(yamlBytes), "\n"), nil
+	},
+	"jsescape": func(key string) (v string, err error) {
+		return template.JSEscapeString(v), nil
+	},
+	"json": func(value interface{}) (v string, err error) {
+		rawJSON, jsonErr := json.Marshal(value)
+		if jsonErr != nil {
+			return fmt.Sprintf("%q", value), jsonErr
+		}
+		return string(rawJSON), nil
+	},
+	"jsonindent": func(value interface{}, prefix string, indent string) (v string, err error) {
+		rawJSON, jsonErr := json.MarshalIndent(value, prefix, indent)
+		if jsonErr != nil {
+			return fmt.Sprintf("%q", value), jsonErr
+		}
+		return string(rawJSON), nil
+	},
+
 	"secret": func(key string) (v string, err error) {
 		v, err = rawSecret(key)
 		if err != nil {
@@ -27,32 +56,6 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return v, nil
 	},
-	"secret_js": func(key string) (v string, err error) {
-		v, err = rawSecret(key)
-		if err != nil {
-			return key, err
-		}
-		return template.JSEscapeString(v), nil
-	},
-	"secret_json": func(key string) (v string, err error) {
-		raw, secretErr := rawSecret(key)
-		if secretErr != nil {
-			return key, secretErr
-		}
-		rawJSON, jsonErr := json.Marshal(raw)
-		if jsonErr != nil {
-			return key, jsonErr
-		}
-		return string(rawJSON), nil
-	},
-}
-
-func yamlString(str string) (v string, err error) {
-	yamlBytes, err := yaml.Marshal(str)
-	if err != nil {
-		return str, err
-	}
-	return string(yamlBytes), nil
 }
 
 func getTemplateFuncs(data interface{}) template.FuncMap {

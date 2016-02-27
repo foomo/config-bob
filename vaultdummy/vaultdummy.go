@@ -30,10 +30,11 @@ func DummyVaultServer(handler func(r *http.Request) interface{}) *httptest.Serve
 func DummyVaultServerSecretEcho() *httptest.Server {
 	return DummyVaultServer(func(r *http.Request) interface{} {
 		response := map[string]string{
-			"token":    "weel-a-token",
+			"token":    "well-a-token",
 			"name":     "call my name",
 			"user":     "user-from" + r.URL.Path,
 			"password": "dummy-password",
+			"escape":   "muha\"haha",
 		}
 		return response
 	})

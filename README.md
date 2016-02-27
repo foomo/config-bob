@@ -16,19 +16,61 @@ We needed a simple tool to populate our app configurations with data and **secre
 config-bob build path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
 ```
 
-### Bobs templating add-ons
+### Bobs template helpers
 
-Apart from standard templating functions we have added a few extra ones, which should come in handy, when writing configurations:
+Apart from standard template functions we have added a few extra ones, which should come in handy, when writing configurations:
 
 ```
-// secret helpers
-{{ secret secret/path/to/secret.prop }}
-{{ secret_js secret/path/to/secret.prop }}
-{{ secret_json secret/path/to/secret.prop }}
-{{ secret_yaml secret/path/to/secret.prop }}
+// secrets helpers
+{{ secret "secret/path/to/secret.prop" }}
 
-// others
-{{ yaml_string .some.data.prop }}
+// combining secrets with escaping might come in handy
+{{ json (secret "secret/path/to/secret.prop") }}
+```
+
+Data in this example
+
+```go
+data := map[string]interface{}{
+    "hello": "test",
+    "nested": map[string]string{
+        "foo": "bar",
+    },
+}
+```
+
+```
+// template dump some yaml into a file
+{{ yaml . }}
+// output
+hello: test
+nested:
+  foo: bar
+
+// template indent sth - yaml in this case
+{{ indent (yaml .) "  " }}
+// output
+  hello: test
+  nested:
+    foo: bar
+
+
+// template json
+{{ json . }}
+
+// output
+{"hello":"test","nested":{"foo":"bar"}}
+
+// json indented parameters are prefix and indent
+{{ jsonindent . "  " "  " }}
+
+// output - note that there is no indent in the first line
+{
+      "hello": "test",
+      "nested": {
+        "foo": "bar"
+    }
+  }
 ```
 
 We expect this list of helpers to grow.

@@ -1,5 +1,5 @@
 ---
-killer: {{ yaml_string .yamlKiller }}
+killer: {{ yaml .yamlKiller }}
 foo: {{.Foo.Secret}}
 account:
   name: {{ secret "secret/smtp.name" }}
