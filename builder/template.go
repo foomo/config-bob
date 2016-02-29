@@ -2,8 +2,10 @@ package builder
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -13,6 +15,48 @@ import (
 
 // TemplateFuncs knock yourself out - this is what builder user for templating
 var TemplateFuncs = template.FuncMap{
+	"substr": func(str string, ranger string) (v string, err error) {
+
+		rangeParts := strings.Split(ranger, ":")
+		if len(rangeParts) != 2 {
+			return str, fmt.Errorf("can not parse %q", ranger)
+		}
+
+		start := 0
+		end := len(str)
+
+		convert := func(strVal string, def int) (int, error) {
+			if len(strVal) == 0 {
+				return def, nil
+			}
+			i, err := strconv.Atoi(strVal)
+			if err != nil {
+				return i, err
+			}
+			if i < 0 {
+				return i, errors.New("range value must be non negative")
+			}
+			return i, err
+		}
+
+		start, err = convert(rangeParts[0], start)
+		if err != nil {
+			return str, fmt.Errorf("could not parse range start in %q", ranger)
+		}
+
+		end, err = convert(rangeParts[1], end)
+		if err != nil {
+			return str, fmt.Errorf("could not parse range end in %q", ranger)
+		}
+
+		max := len(str)
+		if end > max {
+			return str, fmt.Errorf("end out of range %q length is %q", ranger, max)
+		}
+
+		substring := str[start:end]
+		return substring, nil
+	},
 	"env": func(value string) (v string, err error) {
 		return os.Getenv(value), nil
 	},
@@ -48,7 +92,6 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return string(rawJSON), nil
 	},
-
 	"secret": func(key string) (v string, err error) {
 		v, err = rawSecret(key)
 		if err != nil {

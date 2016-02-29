@@ -71,6 +71,20 @@ nested:
 ////+++|+++|"foo": "bar"
 ////+++|}
 ////}
+
+// template substr, which is essentially string slice access
+{{ substr .hello ":2"}}`
+// output
+te
+
+{{ substr .hello "1:"}}`
+// output
+est
+
+{{ substr .hello "1:2"}}`
+// output
+e
+
 ```
 
 We expect this list of helpers to grow.
