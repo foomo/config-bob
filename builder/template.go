@@ -31,8 +31,8 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return strings.Trim(string(yamlBytes), "\n"), nil
 	},
-	"jsescape": func(key string) (v string, err error) {
-		return template.JSEscapeString(v), nil
+	"jsescape": func(value string) (v string, err error) {
+		return template.JSEscapeString(value), nil
 	},
 	"json": func(value interface{}) (v string, err error) {
 		rawJSON, jsonErr := json.Marshal(value)
@@ -56,6 +56,19 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return v, nil
 	},
+}
+
+func ensureNonEmpty(key string, str string, err error) (string, error) {
+	if err != nil {
+		return str, err
+	}
+	if len(str) == 0 {
+		if len(key) > 0 {
+			return str, fmt.Errorf("not value for key %q", key)
+		}
+		return str, fmt.Errorf("empty values are not allowed")
+	}
+	return str, nil
 }
 
 func getTemplateFuncs(data interface{}) template.FuncMap {
