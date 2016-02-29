@@ -18,19 +18,26 @@ func TestTemplateFuncs(t *testing.T) {
 			"foo": "bar",
 		},
 	}
-	runTemplate := func(templ string) string {
+	runTemplate := func(templ string) (string, error) {
 		result, err := process("", templ, data)
+		return string(result), err
+	}
+	assert := func(templ, expected string) {
+		result, err := runTemplate(templ)
 		if err != nil {
 			t.Fatal("could not process template", t, err)
 		}
-		return string(result)
-	}
-	assert := func(templ, expected string) {
-		result := runTemplate(templ)
 		if result != expected {
 			t.Fatal(fmt.Sprintf("expected %q got %q", expected, result))
 		}
 	}
+	assertErr := func(templ string) {
+		_, err := runTemplate(templ)
+		if err == nil {
+			t.Fatal("that sould have been an error")
+		}
+	}
+
 	assert(`{{ yaml (secret "path/to/hello.token") }}`, "well-a-token")
 	assert(`{{ json (yaml (secret "path/to/hello.escape")) }}`, "\"muha\\\"haha\"")
 
@@ -64,4 +71,17 @@ func TestTemplateFuncs(t *testing.T) {
 	)
 
 	assert(yamlIndentTemplate, yamlIndentExpected)
+
+	// .hello contains "test"
+	assert(`{{ substr .hello ":2"}}`, `te`)
+	assert(`{{ substr .hello "1:"}}`, `est`)
+	assert(`{{ substr .hello "0:"}}`, `test`)
+	assert(`{{ substr .hello ":0"}}`, ``)
+	assert(`{{ substr .hello "1:2"}}`, `e`)
+	assert(`{{ substr .hello "1:1"}}`, ``)
+
+	assertErr(`{{ substr .hello "1:10"}}`)
+	assertErr(`{{ substr .hello "-1:1"}}`)
+	assertErr(`{{ substr .hello ":-1"}}`)
+
 }
