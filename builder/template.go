@@ -57,8 +57,12 @@ var TemplateFuncs = template.FuncMap{
 		substring := str[start:end]
 		return substring, nil
 	},
-	"env": func(value string) (v string, err error) {
-		return os.Getenv(value), nil
+	"env": func(name string) (v string, err error) {
+		v = os.Getenv(name)
+		if len(v) == 0 {
+			return v, fmt.Errorf("env variable %q was empty", name)
+		}
+		return v, nil
 	},
 	"indent": func(code, indent string) (string, error) {
 		lines := strings.Split(code, "\n")
@@ -99,19 +103,6 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return v, nil
 	},
-}
-
-func ensureNonEmpty(key string, str string, err error) (string, error) {
-	if err != nil {
-		return str, err
-	}
-	if len(str) == 0 {
-		if len(key) > 0 {
-			return str, fmt.Errorf("not value for key %q", key)
-		}
-		return str, fmt.Errorf("empty values are not allowed")
-	}
-	return str, nil
 }
 
 func getTemplateFuncs(data interface{}) template.FuncMap {

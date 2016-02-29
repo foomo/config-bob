@@ -91,7 +91,7 @@ func processFile(filename string, data interface{}) (result []byte, err error) {
 }
 
 func process(templName, templ string, data interface{}) (result []byte, err error) {
-	t, err := template.New(templName).Funcs(TemplateFuncs).Parse(templ)
+	t, err := template.New(templName).Option("missingkey=error").Funcs(TemplateFuncs).Parse(templ)
 	if err != nil {
 		return
 	}

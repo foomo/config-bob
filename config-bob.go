@@ -43,7 +43,7 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case commandVersion:
-			fmt.Println("0.2.1")
+			fmt.Println("0.2.2")
 		case commandHtpasswd:
 			htpasswdLocalUsage := func() {
 				fmt.Println("usage: ", os.Args[0], commandHtpasswd, "path/to/htpasswd.yaml")

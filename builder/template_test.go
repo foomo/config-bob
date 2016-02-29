@@ -8,6 +8,13 @@ import (
 	"github.com/foomo/config-bob/vaultdummy"
 )
 
+func TestMissingError(t *testing.T) {
+	_, err := process("", "{{.foo}}", map[string]interface{}{})
+	if err == nil {
+		t.Fatal("missing keys are not an option")
+	}
+}
+
 func TestTemplateFuncs(t *testing.T) {
 	ts := vaultdummy.DummyVaultServerSecretEcho()
 	defer ts.Close()
