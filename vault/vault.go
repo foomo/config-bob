@@ -3,9 +3,7 @@ package vault
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"net/http"
-	"os"
+	"fmt"
 	"os/exec"
 	"strings"
 )
@@ -30,52 +28,33 @@ func CheckEnv() bool {
 	return false
 }
 
-// ReadSecret data from a vault - env vars need to be set
-func ReadSecret(path string) (secret map[string]string, err error) {
-	if len(os.Getenv("VAULT_TOKEN")) == 0 {
-		return nil, errors.New("VAULT_TOKEN is missing in env - can not call vault and ask for secrets")
+func vaultErr(combinedOutput []byte, err error) error {
+	return fmt.Errorf("err: %q, output: %q", err, string(combinedOutput))
+}
+
+// VaultDummy enables a built in dummy
+var VaultDummy = false
+
+// Read data from a vault - env vars need to be set
+func Read(path string) (secret map[string]string, err error) {
+	if VaultDummy {
+		return map[string]string{
+			"token":    "well-a-token",
+			"name":     "call my name",
+			"user":     "user-from" + path,
+			"password": "dummy-password",
+			"escape":   "muha\"haha",
+		}, nil
 	}
-	// curl -v  -H "X-Vault-Token: $VAULT_TOKEN" $VAULT_ADDR/v1/secret/schild/smtp
-	response, err := CallVault("/v1/" + path)
+	jsonBytes, err := exec.Command("vault", "read", "-format", "json", path).CombinedOutput()
 	if err != nil {
-		return nil, err
+		return nil, vaultErr(jsonBytes, err)
 	}
-	if response.StatusCode != http.StatusOK {
-		responseBody := "empty response body"
-		if response != nil {
-			bytes, err := ioutil.ReadAll(response.Body)
-			if err != nil {
-				responseBody = "could not read response body: " + err.Error()
-			} else {
-				responseBody = string(bytes)
-			}
-		}
-		return nil, errors.New("could not get secret " + path + " : " + response.Status + " :: " + responseBody)
-	}
-	jsonBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	response.Body.Close()
-	readResponse := &readResponse{}
-	jsonErr := json.Unmarshal(jsonBytes, &readResponse)
+	response := &readResponse{}
+	jsonErr := json.Unmarshal(jsonBytes, response)
 	if jsonErr != nil {
 		return nil, jsonErr
 	}
-	return readResponse.Data, nil
-}
 
-func CallVault(path string) (response *http.Response, err error) {
-	addr := os.Getenv("VAULT_ADDR")
-	if len(addr) == 0 {
-		return nil, errors.New("VAULT_ADDR missing in env - can not call vault")
-	}
-	token := os.Getenv("VAULT_TOKEN")
-	request, err := http.NewRequest("GET", addr+path, nil)
-
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Add("X-Vault-Token", token)
-	return http.DefaultClient.Do(request)
+	return response.Data, nil
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/foomo/config-bob/builder"
 	"github.com/foomo/config-bob/vault"
@@ -16,6 +17,7 @@ Commands:
     build           my main task
     vault-local     set up a local vault
     vault-htpasswd  update htpasswd files
+    vault-tree      show a recursive listing in vault
     version         display version number
 `
 
@@ -28,6 +30,7 @@ const (
 	commandVersion    = "version"
 	commandBuild      = "build"
 	commandVaultLocal = "vault-local"
+	commandVaultTree  = "vault-tree"
 	commandHtpasswd   = "vault-htpasswd"
 )
 
@@ -43,7 +46,20 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case commandVersion:
-			fmt.Println("0.2.2")
+			fmt.Println("0.2.3")
+		case commandVaultTree:
+			if len(os.Args) != 3 {
+				fmt.Println("usage: ", os.Args[0], commandVaultTree, "path/in/vault")
+				os.Exit(1)
+			}
+			fmt.Println("vault tree:")
+			path := strings.TrimRight(os.Args[2], "/") + "/"
+			fmt.Println(path)
+			err := vault.Tree(path, 1)
+			if err != nil {
+				fmt.Println("failed to show tree", err)
+				os.Exit(1)
+			}
 		case commandHtpasswd:
 			htpasswdLocalUsage := func() {
 				fmt.Println("usage: ", os.Args[0], commandHtpasswd, "path/to/htpasswd.yaml")

@@ -7,7 +7,6 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/foomo/config-bob/vaultdummy"
 	"github.com/foomo/htpasswd"
 )
 
@@ -18,8 +17,7 @@ func poe(err error) {
 }
 
 func TestHtpasswd(t *testing.T) {
-	ts := vaultdummy.DummyVaultServerSecretEcho()
-	defer ts.Close()
+	VaultDummy = true
 	testDir, err := ioutil.TempDir(os.TempDir(), "htpasswd-config-test-dir-")
 	poe(err)
 	testConfigFile, err := ioutil.TempFile(os.TempDir(), "htpasswd-config")
@@ -39,11 +37,6 @@ func TestHtpasswd(t *testing.T) {
 	poe(ioutil.WriteFile(testConfigFile.Name(), configBytes, 0600))
 	poe(WriteHtpasswdFiles(testConfigFile.Name(), htpasswd.HashBCrypt))
 
-	/*
-		cmd := exec.Command("tree", testDir)
-		combined, err := cmd.CombinedOutput()
-		t.Log("tree", err, string(combined))
-	*/
 	for htpasswdFile, secretPaths := range cnf {
 		passwords, err := htpasswd.ParseHtpasswdFile(htpasswdFile)
 		//poe(err)

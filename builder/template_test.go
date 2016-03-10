@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-
-	"github.com/foomo/config-bob/vaultdummy"
 )
 
 func TestMissingError(t *testing.T) {
@@ -16,9 +14,6 @@ func TestMissingError(t *testing.T) {
 }
 
 func TestTemplateFuncs(t *testing.T) {
-	ts := vaultdummy.DummyVaultServerSecretEcho()
-	defer ts.Close()
-
 	data := map[string]interface{}{
 		"hello": "test",
 		"nested": map[string]string{

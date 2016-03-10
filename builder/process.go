@@ -56,7 +56,7 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 func rawSecret(key string) (v string, err error) {
 	parts := strings.Split(key, ".")
 	if len(parts) == 2 {
-		secretData, err := vault.ReadSecret(parts[0])
+		secretData, err := vault.Read(parts[0])
 		if err != nil {
 			v = "secret retrieval error: " + err.Error()
 			return v, errors.New(v)

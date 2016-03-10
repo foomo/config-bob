@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/foomo/config-bob/vaultdummy"
+	"github.com/foomo/config-bob/vault"
 )
 
 func getCurrentDir() string {
@@ -28,9 +28,6 @@ func GetExample(path string) string {
 }
 
 func TestFilesAndFolders(t *testing.T) {
-	ts := vaultdummy.DummyVaultServerSecretEcho()
-	defer ts.Close()
-
 	exampleA := GetExample("source-a")
 	match := func(topic string, a []string, b []string) {
 		for i := range a {
@@ -44,9 +41,7 @@ func TestFilesAndFolders(t *testing.T) {
 }
 
 func TestProcess(t *testing.T) {
-	ts := vaultdummy.DummyVaultServerSecretEcho()
-	defer ts.Close()
-
+	vault.VaultDummy = true
 	exampleA := GetExample("source-a")
 	data := make(map[string]interface{})
 	jsonBytes, err := ioutil.ReadFile(GetExample("data.json"))

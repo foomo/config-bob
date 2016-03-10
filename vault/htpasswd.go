@@ -34,7 +34,7 @@ func writeHtpasswdFiles(config HtpasswdConfig, hashAlgorithm htpasswd.HashAlgori
 		}
 		fmt.Println("updating passwords in:", passwordFile)
 		for _, passwordVaultPath := range passwords {
-			secret, err := ReadSecret(passwordVaultPath)
+			secret, err := Read(passwordVaultPath)
 			if err != nil {
 				return fmt.Errorf("could not read secret for path %q got error:: %q", passwordVaultPath, err)
 			}
