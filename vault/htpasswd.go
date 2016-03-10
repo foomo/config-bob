@@ -32,6 +32,7 @@ func writeHtpasswdFiles(config HtpasswdConfig, hashAlgorithm htpasswd.HashAlgori
 		if err != nil {
 			return errors.New("could not create path: " + p + " for file: " + passwordFile)
 		}
+		fmt.Println("updating passwords in:", passwordFile)
 		for _, passwordVaultPath := range passwords {
 			secret, err := ReadSecret(passwordVaultPath)
 			if err != nil {
@@ -45,6 +46,7 @@ func writeHtpasswdFiles(config HtpasswdConfig, hashAlgorithm htpasswd.HashAlgori
 			if !passwordOk {
 				return fmt.Errorf("secret from path %q is missing key password", passwordVaultPath)
 			}
+			fmt.Println("	", passwordVaultPath, ":", user)
 			err = htpasswd.SetPassword(passwordFile, user, password, hashAlgorithm)
 			if err != nil {
 				return fmt.Errorf("could not set password for %q in file %q got error %q", user, passwordFile, err)
