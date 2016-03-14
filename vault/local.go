@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -107,6 +108,16 @@ func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error) {
 }
 
 func LocalIsRunning() bool {
+	addr := os.Getenv("VAULT_ADDR")
+	response, err := http.Get(addr + "/v1/")
+	if err != nil {
+		return false
+	}
+	contentTypes, ok := response.Header["Content-Type"]
+	return response.StatusCode == http.StatusNotFound && ok && len(contentTypes) == 1 && contentTypes[0] == "application/json"
+}
+
+func _LocalIsRunning() bool {
 	cmd := exec.Command("vault", "status")
 	err := cmd.Run()
 	//fmt.Println("state:", cmd.ProcessState.ExitStatus(), err, string(combined))
