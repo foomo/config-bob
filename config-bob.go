@@ -99,11 +99,7 @@ func main() {
 					os.Exit(1)
 				}
 				fmt.Println("vault not running - trying to start it")
-				vaultCommand, chanVaultErr, vaultErr := vault.LocalStart(vaultFolder)
-				if vaultErr != nil {
-					fmt.Println("could not start local vault server:", vaultErr.Error())
-					os.Exit(1)
-				}
+				vaultCommand, chanVaultErr := vault.LocalStart(vaultFolder)
 
 				log.Println("launching new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
 
