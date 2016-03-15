@@ -39,11 +39,19 @@ func (p *ProcessingResult) ContainsFolder(someFolder string) bool {
 
 func processFolder(folderPath string, data interface{}) (result *ProcessingResult, err error) {
 	folderPath = path.Clean(folderPath)
+	folders, err := getFolders(folderPath)
+	if err != nil {
+		return
+	}
 	p := &ProcessingResult{
-		Folders: getFolders(folderPath),
+		Folders: folders,
 		Files:   make(map[string][]byte),
 	}
-	for _, file := range getFiles(folderPath) {
+	files, err := getFiles(folderPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
 
 		p.Files[file], err = processFile(path.Join(folderPath, file), data)
 		if err != nil {
