@@ -89,22 +89,66 @@ func readData(file string) (data interface{}, err error) {
 	return d, err
 }
 
-func getFiles(root string) []string {
-	return filterFiles(root, func(path string, fileInfo os.FileInfo) bool {
-		return !fileInfo.IsDir()
+func getFiles(root string) (files []string, err error) {
+	files = filterFiles(root, func(path string, fileInfo os.FileInfo) bool {
+		tartgetInfo, e := resolve(fileInfo, path)
+		if e != nil {
+			err = e
+		}
+		return !tartgetInfo.IsDir()
 	})
+	return
 }
 
-func getFolders(root string) []string {
-	return filterFiles(root, func(path string, fileInfo os.FileInfo) bool {
-		return fileInfo.IsDir() && path != root
+func getFolders(root string) (folders []string, err error) {
+	folders = filterFiles(root, func(path string, fileInfo os.FileInfo) bool {
+		targetInfo, e := resolve(fileInfo, path)
+		if e != nil {
+			err = e
+		}
+		return path != root && targetInfo.IsDir()
 	})
+	return
+}
+
+func resolve(info os.FileInfo, p string) (targetInfo os.FileInfo, err error) {
+	if info.Mode()&os.ModeSymlink == os.ModeSymlink {
+		// let us take a look at the target
+		target, err := filepath.EvalSymlinks(p)
+		if err == nil {
+			return os.Stat(target)
+		}
+		return nil, err
+	}
+	return info, nil
+}
+
+func walk(root string, filter filepath.WalkFunc) (err error) {
+	f, err := os.Open(root)
+	fileInfos, err := f.Readdir(0)
+	if err != nil {
+		return
+	}
+	for _, fileInfo := range fileInfos {
+		pathname := path.Join(root, fileInfo.Name())
+		targetInfo, err := resolve(fileInfo, pathname)
+		// walk func does decide what to do with the errors
+		err = filter(pathname, fileInfo, err)
+		if err != nil {
+			return err
+		}
+		if targetInfo.IsDir() {
+			walk(pathname, filter)
+		}
+	}
+	return
 }
 
 func filterFiles(root string, filter func(path string, fileInfo os.FileInfo) bool) []string {
 	files := []string{}
 	prefix := fmt.Sprintf("%s%c", root, os.PathSeparator)
-	filepath.Walk(root, func(path string, fileInfo os.FileInfo, err error) error {
+	walk(root, func(path string, fileInfo os.FileInfo, err error) error {
+		fmt.Println(root, path)
 		if filter(path, fileInfo) {
 			p := strings.TrimPrefix(path, prefix)
 			files = append(files, p)
@@ -112,5 +156,6 @@ func filterFiles(root string, filter func(path string, fileInfo os.FileInfo) boo
 		return err
 	})
 	sort.Strings(files)
+	fmt.Println(root, files)
 	return files
 }

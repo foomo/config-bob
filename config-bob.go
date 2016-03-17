@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/bgentry/speakeasy"
 	"github.com/foomo/config-bob/builder"
 	"github.com/foomo/config-bob/vault"
 	"github.com/foomo/htpasswd"
@@ -46,7 +47,7 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case commandVersion:
-			fmt.Println("0.2.3")
+			fmt.Println("0.2.4")
 		case commandVaultTree:
 			if len(os.Args) != 3 {
 				fmt.Println("usage: ", os.Args[0], commandVaultTree, "path/in/vault")
@@ -99,10 +100,46 @@ func main() {
 					os.Exit(1)
 				}
 				fmt.Println("vault not running - trying to start it")
-				vaultCommand, chanVaultErr, vaultErr := vault.LocalStart(vaultFolder)
-				if vaultErr != nil {
-					fmt.Println("could not start local vault server:", vaultErr.Error())
+
+				vaultKeys := []string{}
+
+				keyNumber := 1
+				fmt.Println("Enter keys to unseal, terminate with empty entry")
+				for {
+					vaultKey, err := speakeasy.Ask(fmt.Sprintf("vault key %d:", keyNumber))
+					if err != nil {
+						fmt.Println("vault key")
+						os.Exit(1)
+					}
+					if len(vaultKey) == 0 {
+						break
+					}
+					vaultKeys = append(vaultKeys, vaultKey)
+					keyNumber++
+				}
+
+				vaultToken, err := speakeasy.Ask("enter vault token:")
+				if err != nil {
+					fmt.Println("could not read token", err)
 					os.Exit(1)
+				}
+				if len(vaultToken) > 0 {
+					fmt.Println("exporting vault token", vaultToken)
+					os.Setenv("VAULT_TOKEN", vaultToken)
+				}
+
+				vaultCommand, chanVaultErr := vault.LocalStart(vaultFolder)
+
+				if len(vaultKeys) > 0 {
+					fmt.Println("trying to unseal vault:")
+				}
+				for _, vaultKey := range vaultKeys {
+					out, err := exec.Command("vault", "unseal", vaultKey).CombinedOutput()
+					if err != nil {
+						fmt.Println("could not unseal vault", err, string(out))
+					} else {
+						fmt.Println(string(out))
+					}
 				}
 
 				log.Println("launching new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")

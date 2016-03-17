@@ -36,8 +36,12 @@ func TestFilesAndFolders(t *testing.T) {
 			}
 		}
 	}
-	match("file list missmatch", getFiles(exampleA), []string{"config.yml", "httpd/ext/foo.conf", "httpd/test.conf"})
-	match("folder list missmatch", getFolders(exampleA), []string{"httpd", "httpd/ext"})
+	files, err := getFiles(exampleA)
+	panicOnErr(err)
+	match("file list missmatch", files, []string{"config.yml", "httpd/ext/foo.conf", "httpd/test.conf"})
+	folders, err := getFolders(exampleA)
+	panicOnErr(err)
+	match("folder list missmatch", folders, []string{"httpd", "httpd/ext"})
 }
 
 func TestProcess(t *testing.T) {

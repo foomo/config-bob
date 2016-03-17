@@ -19,6 +19,10 @@ func Tree(path string, level int) (err error) {
 		return vaultErr(jsonBytes, err)
 	}
 	paths := []string{}
+	if string(jsonBytes) == "No entries found\n" {
+		// thank you for the json
+		return nil
+	}
 	err = json.Unmarshal(jsonBytes, &paths)
 	if err != nil {
 		return err

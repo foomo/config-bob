@@ -2,12 +2,14 @@ package vault
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
+	"syscall"
 	"text/template"
 	"time"
 )
@@ -76,49 +78,68 @@ func LocalSetup(folder string) error {
 	return ioutil.WriteFile(l.files.conf, out.Bytes(), 0644)
 }
 
-func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error, err error) {
+func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error) {
 	chanVaultErr = make(chan error)
 	cmd = exec.Command("vault", "server", "-config", "./config.hcl")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	var runErr error
-	currentDir, wdErr := os.Getwd()
-	if wdErr != nil {
-		return nil, nil, errors.New("could not get work dir: " + wdErr.Error())
-	}
 	go func() {
-		os.Chdir(folder)
+		cmd.Dir = folder
 		runErr = cmd.Run()
 		chanVaultErr <- runErr
 	}()
-
-	cdMinus := func(err error) error {
-		cdErr := os.Chdir(currentDir)
-		if cdErr != nil {
-			if err != nil {
-				return errors.New(fmt.Sprint("could not start vault server", err.Error(), "and I did not get back to my work dir", cdErr.Error()))
-			}
-			return cdErr
-		}
-		return err
-	}
 	for {
 		select {
-		case <-time.After(time.Millisecond * 100):
+		case <-time.After(time.Millisecond * 500):
 			if runErr != nil {
-				return nil, nil, cdMinus(runErr)
+				fmt.Println("waiting for vault to start")
+				return nil, nil
 			}
 			if LocalIsRunning() {
-				return cmd, chanVaultErr, cdMinus(nil)
+				return cmd, chanVaultErr
+			} else {
+				fmt.Println("local is not running")
 			}
 		case <-time.After(time.Second * 3):
-			return nil, nil, cdMinus(errors.New("local start timed out"))
+			return nil, nil
 		}
 	}
 }
 
 func LocalIsRunning() bool {
-	err := exec.Command("vault", "status").Run()
+	addr := os.Getenv("VAULT_ADDR")
+	response, err := http.Get(addr + "/v1/")
+	if err != nil {
+		return false
+	}
+	contentTypes, ok := response.Header["Content-Type"]
+	return response.StatusCode == http.StatusNotFound && ok && len(contentTypes) == 1 && contentTypes[0] == "application/json"
+}
+
+func _LocalIsRunning() bool {
+	cmd := exec.Command("vault", "status")
+	err := cmd.Run()
+	//fmt.Println("state:", cmd.ProcessState.ExitStatus(), err, string(combined))
+
+	if exiterr, ok := err.(*exec.ExitError); ok {
+		// The program has exited with an exit code != 0
+
+		// This works on both Unix and Windows. Although package
+		// syscall is generally platform dependent, WaitStatus is
+		// defined for both Unix and Windows and in both cases has
+		// an ExitStatus() method with the same signature.
+		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+			switch status.ExitStatus() {
+			case 2:
+				// sealed but up
+				return true
+			default:
+				log.Println("vault is in status", status.ExitStatus())
+			}
+		}
+	}
+
 	return err == nil
 }
 
