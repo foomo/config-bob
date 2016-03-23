@@ -44,6 +44,7 @@ func isHelpFlag(arg string) bool {
 }
 
 func main() {
+
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case commandVersion:
@@ -81,7 +82,7 @@ func main() {
 				fmt.Println("usage: ", os.Args[0], commandVaultLocal, "path/to/vault/folder")
 				os.Exit(1)
 			}
-			if len(os.Args) == 3 {
+			if len(os.Args) >= 3 {
 				if isHelpFlag(os.Args[2]) {
 					vaultLocalUsage()
 				}
@@ -142,9 +143,17 @@ func main() {
 					}
 				}
 
-				log.Println("launching new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
+				var cmd *exec.Cmd
+				if len(os.Args) == 3 {
+					log.Println("launching new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
+					cmd = exec.Command(os.Getenv("SHELL"), "--login")
+				} else {
+					log.Println("executing given script in new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
+					params := []string{"--login"}
+					params = append(params, os.Args[3:]...)
+					cmd = exec.Command(os.Getenv("SHELL"), params...)
+				}
 
-				cmd := exec.Command(os.Getenv("SHELL"), "--login")
 				go func() {
 					vaultRunErr := <-chanVaultErr
 					cmd.Process.Kill()
