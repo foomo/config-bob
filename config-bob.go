@@ -173,7 +173,11 @@ func main() {
 				if killErr != nil {
 					log.Println("could not kill vault process:", killErr.Error())
 				}
-				fmt.Println("config bob says bye, bye")
+				if runErr != nil {
+					os.Exit(2)
+				} else {
+					fmt.Println("config bob says bye, bye")
+				}
 			} else {
 				vaultLocalUsage()
 			}
