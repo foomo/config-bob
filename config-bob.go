@@ -43,7 +43,7 @@ func isHelpFlag(arg string) bool {
 	return false
 }
 
-var Version = "none"
+var Version = "0.2.5"
 
 func main() {
 
