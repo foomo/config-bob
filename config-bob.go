@@ -43,12 +43,14 @@ func isHelpFlag(arg string) bool {
 	return false
 }
 
+var Version = "none"
+
 func main() {
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case commandVersion:
-			fmt.Println("0.2.4")
+			fmt.Println(Version)
 		case commandVaultTree:
 			if len(os.Args) != 3 {
 				fmt.Println("usage: ", os.Args[0], commandVaultTree, "path/in/vault")

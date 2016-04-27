@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 	"text/template"
@@ -12,9 +13,15 @@ import (
 	"github.com/foomo/config-bob/vault"
 )
 
+type fileResult struct {
+	info     os.FileInfo
+	filename string
+	bytes    []byte
+}
+
 type ProcessingResult struct {
 	Folders []string
-	Files   map[string][]byte
+	Files   map[string]*fileResult
 }
 
 func (p *ProcessingResult) Merge(otherResult *ProcessingResult) {
@@ -39,21 +46,36 @@ func (p *ProcessingResult) ContainsFolder(someFolder string) bool {
 
 func processFolder(folderPath string, data interface{}) (result *ProcessingResult, err error) {
 	folderPath = path.Clean(folderPath)
-	folders, err := getFolders(folderPath)
+	ignore := getIgnore(folderPath)
+	if len(ignore) > 2 {
+		fmt.Println("found .bobignore, ignoring", strings.Join(ignore, ", "))
+	}
+	copy := getCopy(folderPath)
+	if len(copy) > 0 {
+		fmt.Println("found .bobcopy, copying", strings.Join(copy, ", "))
+	}
+	folders, err := getFolders(folderPath, ignore)
 	if err != nil {
 		return
 	}
 	p := &ProcessingResult{
 		Folders: folders,
-		Files:   make(map[string][]byte),
+		Files:   map[string]*fileResult{},
 	}
-	files, err := getFiles(folderPath)
+	files, err := getFiles(folderPath, ignore)
 	if err != nil {
 		return nil, err
 	}
 	for _, file := range files {
+		run := true
 
-		p.Files[file], err = processFile(path.Join(folderPath, file), data)
+		for _, copyFile := range copy {
+			if strings.HasPrefix(file, copyFile) || file == copyFile {
+				run = false
+				break
+			}
+		}
+		p.Files[file], err = processFile(path.Join(folderPath, file), data, run)
 		if err != nil {
 			return p, err
 		}
@@ -90,12 +112,34 @@ func rawTemplate(data interface{}, key string) string {
 	return string(out.Bytes())
 }
 
-func processFile(filename string, data interface{}) (result []byte, err error) {
+func processFile(filename string, data interface{}, run bool) (result *fileResult, err error) {
 	fileContents, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return
+		return nil, nil
 	}
-	return process(filename, string(fileContents), data)
+	var bytes []byte
+	if run {
+		fmt.Println("processing :", filename)
+		processedBytes, err := process(filename, string(fileContents), data)
+		if err != nil {
+			return nil, err
+		}
+		bytes = processedBytes
+	} else {
+		fmt.Println("copying    :", filename)
+		bytes = fileContents
+	}
+
+	info, err := os.Stat(filename)
+	if err != nil {
+		return nil, err
+	}
+	return &fileResult{
+		filename: filename,
+		bytes:    bytes,
+		info:     info,
+	}, nil
+
 }
 
 func process(templName, templ string, data interface{}) (result []byte, err error) {

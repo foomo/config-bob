@@ -27,19 +27,29 @@ func GetExample(path string) string {
 	return filepath.Join(getCurrentDir(), "..", "example", path)
 }
 
+func TestIgnore(t *testing.T) {
+	exampleA := GetExample("source-a")
+	ignore := getIgnore(exampleA)
+	if ignore[2] != "httpd/ignore-me.txt" {
+		t.Fatal("ignore file parse error")
+	}
+}
+
 func TestFilesAndFolders(t *testing.T) {
 	exampleA := GetExample("source-a")
-	match := func(topic string, a []string, b []string) {
-		for i := range a {
-			if a[i] != b[i] {
-				t.Fatal(topic)
+	match := func(topic string, actual []string, expected []string) {
+		t.Log("matching", topic, "actual", actual, "expected", expected)
+		for i := range expected {
+			if actual[i] != expected[i] {
+				t.Fatal(topic, actual[i], "!=", expected[i])
 			}
 		}
 	}
-	files, err := getFiles(exampleA)
+	ignore := getIgnore(exampleA)
+	files, err := getFiles(exampleA, ignore)
 	panicOnErr(err)
-	match("file list missmatch", files, []string{"config.yml", "httpd/ext/foo.conf", "httpd/test.conf"})
-	folders, err := getFolders(exampleA)
+	match("file list missmatch", files, []string{"config.yml", "httpd/copy.txt", "httpd/ext/foo.conf", "httpd/test.conf"})
+	folders, err := getFolders(exampleA, ignore)
 	panicOnErr(err)
 	match("folder list missmatch", folders, []string{"httpd", "httpd/ext"})
 }
@@ -55,7 +65,7 @@ func TestProcess(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	for filename, fileBytes := range r.Files {
-		fmt.Println(filename, string(fileBytes))
+	for filename, processingResult := range r.Files {
+		fmt.Println(filename, string(processingResult.bytes))
 	}
 }
