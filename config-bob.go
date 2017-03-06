@@ -13,6 +13,9 @@ import (
 	"github.com/foomo/htpasswd"
 )
 
+// Version constant specifies the current version of the script
+const Version = "0.2.5"
+
 const helpCommands = `
 Commands:
     build           my main task
@@ -21,11 +24,6 @@ Commands:
     vault-tree      show a recursive listing in vault
     version         display version number
 `
-
-func help() {
-	fmt.Println("usage:", os.Args[0], "<command>")
-	fmt.Println(helpCommands)
-}
 
 const (
 	commandVersion    = "version"
@@ -43,7 +41,13 @@ func isHelpFlag(arg string) bool {
 	return false
 }
 
-var Version = "0.2.5"
+
+
+func help() {
+	fmt.Println("usage:", os.Args[0], "<command>")
+	fmt.Println(helpCommands)
+}
+
 
 func versionCommand() {
 	fmt.Print(Version)
