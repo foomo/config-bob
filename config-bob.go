@@ -231,14 +231,19 @@ func main() {
 		switch os.Args[1] {
 		case commandVersion:
 			versionCommand()
+			break
 		case commandVaultTree:
 			vaultTreeCommand()
+			break
 		case commandHtpasswd:
 			htpasswdCommand()
+			break
 		case commandVaultLocal:
 			vaultLocalCommand()
+			break
 		case commandBuild:
 			buildCommand()
+			break
 		default:
 			fmt.Println("unknown command", "\""+os.Args[1]+"\"")
 			help()
