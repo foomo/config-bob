@@ -103,6 +103,11 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return v, nil
 	},
+	"replace": replace,
+}
+
+func replace(search string, replace string,value interface{}) (v string, err error) {
+	return strings.Replace(value.(string), search, replace, -1), nil
 }
 
 func getTemplateFuncs(data interface{}) template.FuncMap {

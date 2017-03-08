@@ -12,6 +12,10 @@ func TestMissingError(t *testing.T) {
 		t.Fatal("missing keys are not an option")
 	}
 }
+func renderTemplate(templ string, data map[string]interface{}) (string, error) {
+	result, err := process("", templ, data)
+	return string(result), err
+}
 
 func TestTemplateFuncs(t *testing.T) {
 	data := map[string]interface{}{
@@ -20,12 +24,8 @@ func TestTemplateFuncs(t *testing.T) {
 			"foo": "bar",
 		},
 	}
-	runTemplate := func(templ string) (string, error) {
-		result, err := process("", templ, data)
-		return string(result), err
-	}
 	assert := func(templ, expected string) {
-		result, err := runTemplate(templ)
+		result, err := renderTemplate(templ, data)
 		if err != nil {
 			t.Fatal("could not process template", t, err)
 		}
@@ -34,7 +34,7 @@ func TestTemplateFuncs(t *testing.T) {
 		}
 	}
 	assertErr := func(templ string) {
-		_, err := runTemplate(templ)
+		_, err := renderTemplate(templ, data)
 		if err == nil {
 			t.Fatal("that sould have been an error")
 		}
@@ -86,4 +86,25 @@ func TestTemplateFuncs(t *testing.T) {
 	assertErr(`{{ substr .hello "-1:1"}}`)
 	assertErr(`{{ substr .hello ":-1"}}`)
 
+}
+
+func TestTemplateReplace(t *testing.T) {
+	data := map[string]interface{}{"data": "test\ntest"        }
+	template := `{{ replace "\n" " " .data}}`
+	content, _ := renderTemplate(template, data)
+	if content != "test test" {
+		t.Fatal("Template didn't work")
+	}
+}
+
+func TestTemplateReplaceChaining(t *testing.T) {
+	data := map[string]interface{}{"data": "a-test-test-a"        }
+	template := `{{ substr .data "2:11" | replace "-" " "}}`
+	content, err := renderTemplate(template, data)
+	if err != nil {
+		t.Fatal("Template error occurred", err)
+	}
+	if content != "test test" {
+		t.Fatal("Template didn't work")
+	}
 }
