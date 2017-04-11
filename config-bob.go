@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -14,7 +13,7 @@ import (
 )
 
 // Version constant specifies the current version of the script
-const Version = "0.2.6"
+const Version = "0.3.1"
 
 const helpCommands = `
 Commands:
@@ -106,6 +105,7 @@ func vaultLocalCommand() {
 			os.Exit(1)
 		}
 		fmt.Println("vault not running - trying to start it")
+
 		vaultCommand, chanVaultErr := vault.LocalStart(vaultFolder)
 
 		vaultKeys := []string{}
@@ -135,7 +135,6 @@ func vaultLocalCommand() {
 			os.Setenv("VAULT_TOKEN", vaultToken)
 		}
 
-
 		if len(vaultKeys) > 0 {
 			fmt.Println("trying to unseal vault:")
 		}
@@ -144,23 +143,17 @@ func vaultLocalCommand() {
 			out, err := exec.Command("vault", "unseal", vaultKey).CombinedOutput()
 			if err != nil {
 				fmt.Println("could not unseal vault", err, string(out))
-				os.Exit(1)
 			} else {
 				fmt.Println(string(out))
 			}
 		}
 
-		statusErr := exec.Command("vault", "status").Run()
-		if statusErr != nil {
-			fmt.Println("could not get a valid vault status ", err)
-		}
-
 		var cmd *exec.Cmd
 		if len(os.Args) == 3 {
-			log.Println("launching new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
+			fmt.Println("launching new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
 			cmd = exec.Command(os.Getenv("SHELL"), "--login")
 		} else {
-			log.Println("executing given script in new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
+			fmt.Println("executing given script in new shell", "\""+os.Getenv("SHELL")+"\"", "with pimped environment")
 			params := []string{"--login"}
 			params = append(params, os.Args[3:]...)
 			cmd = exec.Command(os.Getenv("SHELL"), params...)
@@ -183,8 +176,11 @@ func vaultLocalCommand() {
 		}
 		killErr := vaultCommand.Process.Kill()
 		if killErr != nil {
-			log.Println("could not kill vault process:", killErr.Error())
+			fmt.Println("could not kill vault process:", killErr.Error())
 		}
+
+		fmt.Println("Killed vault command process with PID: ", vaultCommand.Process.Pid)
+
 		if runErr != nil {
 			os.Exit(2)
 		} else {
@@ -213,7 +209,7 @@ func buildCommand() {
 	}
 	builderArgs, err := builder.GetBuilderArgs(os.Args[2:])
 	if err != nil {
-		log.Println(err.Error())
+		fmt.Println(err.Error())
 		buildUsage()
 	} else {
 		result, err := builder.Build(builderArgs)
