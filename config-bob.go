@@ -41,13 +41,10 @@ func isHelpFlag(arg string) bool {
 	return false
 }
 
-
-
 func help() {
 	fmt.Println("usage:", os.Args[0], "<command>")
 	fmt.Println(helpCommands)
 }
-
 
 func versionCommand() {
 	fmt.Print(Version)
@@ -109,6 +106,7 @@ func vaultLocalCommand() {
 			os.Exit(1)
 		}
 		fmt.Println("vault not running - trying to start it")
+		vaultCommand, chanVaultErr := vault.LocalStart(vaultFolder)
 
 		vaultKeys := []string{}
 
@@ -137,18 +135,24 @@ func vaultLocalCommand() {
 			os.Setenv("VAULT_TOKEN", vaultToken)
 		}
 
-		vaultCommand, chanVaultErr := vault.LocalStart(vaultFolder)
 
 		if len(vaultKeys) > 0 {
 			fmt.Println("trying to unseal vault:")
 		}
+
 		for _, vaultKey := range vaultKeys {
 			out, err := exec.Command("vault", "unseal", vaultKey).CombinedOutput()
 			if err != nil {
 				fmt.Println("could not unseal vault", err, string(out))
+				os.Exit(1)
 			} else {
 				fmt.Println(string(out))
 			}
+		}
+
+		statusErr := exec.Command("vault", "status").Run()
+		if statusErr != nil {
+			fmt.Println("could not get a valid vault status ", err)
 		}
 
 		var cmd *exec.Cmd
