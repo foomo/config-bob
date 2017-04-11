@@ -81,13 +81,15 @@ func LocalSetup(folder string) error {
 
 func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error) {
 	chanVaultErr = make(chan error)
+	cmd = exec.Command("vault", "server", "-config", "config.hcl")
+	cmd.Dir = folder
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	var runErr error
 	go func() {
 		fmt.Println("starting vault server with config.hcl in directory",folder)
-		cmd = exec.Command("vault", "server", "-config", "config.hcl")
-		cmd.Dir = folder
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+
 		cmd.Run()
 		chanVaultErr <- runErr
 	}()
@@ -111,14 +113,14 @@ func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error) {
 
 func LocalIsRunning() bool {
 	addr := os.Getenv("VAULT_ADDR")
-	response, err := http.Get(addr + "/v1/")
+	response, err := http.Get(addr + "/v1/sys/init")
 	if err != nil {
 		fmt.Println("Could not get vault from address "+addr)
 		fmt.Println(err)
 		return false
 	}
 	contentTypes, ok := response.Header["Content-Type"]
-	return response.StatusCode == http.StatusServiceUnavailable && ok && len(contentTypes) == 1 && contentTypes[0] == "application/json"
+	return (response.StatusCode == http.StatusOK) && ok && len(contentTypes) == 1 && contentTypes[0] == "application/json"
 }
 
 func _LocalIsRunning() bool {
