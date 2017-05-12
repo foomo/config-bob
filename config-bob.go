@@ -108,32 +108,9 @@ func vaultLocalCommand() {
 
 		vaultCommand, chanVaultErr := vault.LocalStart(vaultFolder)
 
-		vaultKeys := []string{}
+		vaultKeys := getVaultKeys()
 
-		keyNumber := 1
-		fmt.Println("Enter keys to unseal, terminate with empty entry")
-		for {
-			vaultKey, err := speakeasy.Ask(fmt.Sprintf("vault key %d:", keyNumber))
-			if err != nil {
-				fmt.Println("vault key")
-				os.Exit(1)
-			}
-			if len(vaultKey) == 0 {
-				break
-			}
-			vaultKeys = append(vaultKeys, vaultKey)
-			keyNumber++
-		}
-
-		vaultToken, err := speakeasy.Ask("enter vault token:")
-		if err != nil {
-			fmt.Println("could not read token", err)
-			os.Exit(1)
-		}
-		if len(vaultToken) > 0 {
-			fmt.Println("exporting vault token", vaultToken)
-			os.Setenv("VAULT_TOKEN", vaultToken)
-		}
+		setVaultToken()
 
 		if len(vaultKeys) > 0 {
 			fmt.Println("trying to unseal vault:")
@@ -189,6 +166,48 @@ func vaultLocalCommand() {
 	} else {
 		vaultLocalUsage()
 	}
+}
+
+func setVaultToken() {
+	environmentToken := os.Getenv("CFB_TOKEN")
+	if environmentToken != "" {
+		fmt.Println("using token from CFB_TOKEN environment variable")
+		os.Setenv("VAULT_TOKEN", environmentToken)
+	} else {
+		vaultToken, err := speakeasy.Ask("enter vault token:")
+		if err != nil {
+			fmt.Println("could not read token", err)
+			os.Exit(1)
+		}
+		if len(vaultToken) > 0 {
+			fmt.Println("exporting vault token", vaultToken)
+			os.Setenv("VAULT_TOKEN", vaultToken)
+		}
+	}
+}
+
+func getVaultKeys() (vaultKeys []string) {
+	environmentKeys := os.Getenv("CFB_KEYS")
+	if environmentKeys != "" {
+		fmt.Println("Using key from CFB_KEYS environment variable")
+		vaultKeys = strings.Split(environmentKeys, ",")
+	} else {
+		fmt.Println("Enter keys to unseal, terminate with empty entry")
+		keyNumber := 1
+		for {
+			vaultKey, err := speakeasy.Ask(fmt.Sprintf("vault key %d:", keyNumber))
+			if err != nil {
+				fmt.Println("vault key")
+				os.Exit(1)
+			}
+			if len(vaultKey) == 0 {
+				break
+			}
+			vaultKeys = append(vaultKeys, vaultKey)
+			keyNumber++
+		}
+	}
+	return
 }
 
 func buildCommand() {
