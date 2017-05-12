@@ -13,7 +13,7 @@ import (
 )
 
 // Version constant specifies the current version of the script
-const Version = "0.3.1"
+const Version = "0.3.2"
 
 const helpCommands = `
 Commands:
