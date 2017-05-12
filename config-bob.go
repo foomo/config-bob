@@ -171,7 +171,7 @@ func vaultLocalCommand() {
 func setVaultToken() {
 	environmentToken := os.Getenv("CFB_TOKEN")
 	if environmentToken != "" {
-		fmt.Println("using token from CFB_TOKEN environment variable")
+		fmt.Println("Using token from CFB_TOKEN environment variable")
 		os.Setenv("VAULT_TOKEN", environmentToken)
 	} else {
 		vaultToken, err := speakeasy.Ask("enter vault token:")
