@@ -1,0 +1,30 @@
+# .goreleaser.yml
+# Build customization
+builds:
+  - binary: gotsrpc
+    main:   config-bob.go
+    env:
+        - CGO_ENABLED=0
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+
+# .goreleaser.yml
+archive:
+  format: tar.gz
+  format_overrides:
+    - goos: windows
+      format: zip
+
+brew:
+  # Reporitory to push the tap to.
+  github:
+    owner: foomo
+    name: homebrew-config-bob
+
+  caveats: "config-bob -h"
+  homepage: "https://github.com/foomo/config-bob"
+  description: "CLI utility to generate secure configurations"
