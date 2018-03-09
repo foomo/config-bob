@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/foomo/htpasswd"
+	"gopkg.in/yaml.v2"
+	"os/exec"
 )
 
 func poe(err error) {
@@ -55,5 +55,37 @@ func TestVaultVersion(t *testing.T) {
 	}
 	if len(version) < 1 {
 		t.Fatal("that version is very fishy")
+	}
+}
+
+func TestGetVaultVersionParsed(t *testing.T) {
+	tests := []struct {
+		name        string
+		version     string
+		wantMajor   int
+		wantMinor   int
+		wantRelease int
+		wantErr     bool
+	}{
+		{"standard", "Vault v0.9.5 ('36edb4d42380d89a897e7f633046423240b710d9')", 0, 9, 5, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vaultVersionCommand = exec.Command("echo", tt.version)
+			gotMajor, gotMinor, gotRelease, err := GetVaultVersionParsed()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetVaultVersionParsed() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotMajor != tt.wantMajor {
+				t.Errorf("GetVaultVersionParsed() gotMajor = %v, want %v", gotMajor, tt.wantMajor)
+			}
+			if gotMinor != tt.wantMinor {
+				t.Errorf("GetVaultVersionParsed() gotMinor = %v, want %v", gotMinor, tt.wantMinor)
+			}
+			if gotRelease != tt.wantRelease {
+				t.Errorf("GetVaultVersionParsed() gotRelease = %v, want %v", gotRelease, tt.wantRelease)
+			}
+		})
 	}
 }

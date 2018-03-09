@@ -10,6 +10,7 @@ import (
 	"github.com/foomo/config-bob/builder"
 	"github.com/foomo/config-bob/vault"
 	"github.com/foomo/htpasswd"
+	"log"
 )
 
 // Version constant specifies the current version of the script
@@ -117,7 +118,12 @@ func vaultLocalCommand() {
 		}
 
 		for _, vaultKey := range vaultKeys {
-			out, err := exec.Command("vault", "unseal", vaultKey).CombinedOutput()
+			unsealCommand, err := vault.GetUnsealCommand(vaultKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			out, err := unsealCommand.CombinedOutput()
 			if err != nil {
 				fmt.Println("could not unseal vault", err, string(out))
 			} else {
