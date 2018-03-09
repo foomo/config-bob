@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path"
-	"syscall"
 	"text/template"
 	"time"
 )
