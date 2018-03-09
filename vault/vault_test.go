@@ -1,13 +1,15 @@
 package vault
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"reflect"
 	"testing"
 
 	"github.com/foomo/htpasswd"
 	"gopkg.in/yaml.v2"
-	"os/exec"
 )
 
 func poe(err error) {
@@ -72,19 +74,73 @@ func TestGetVaultVersionParsed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			vaultVersionCommand = exec.Command("echo", tt.version)
-			gotMajor, gotMinor, gotRelease, err := GetVaultVersionParsed()
+			version, err := GetVaultVersionParsed()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetVaultVersionParsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if gotMajor != tt.wantMajor {
-				t.Errorf("GetVaultVersionParsed() gotMajor = %v, want %v", gotMajor, tt.wantMajor)
+			if version.Major != tt.wantMajor {
+				t.Errorf("GetVaultVersionParsed() gotMajor = %v, want %v", version.Major, tt.wantMajor)
 			}
-			if gotMinor != tt.wantMinor {
-				t.Errorf("GetVaultVersionParsed() gotMinor = %v, want %v", gotMinor, tt.wantMinor)
+			if version.Minor != tt.wantMinor {
+				t.Errorf("GetVaultVersionParsed() gotMinor = %v, want %v", version.Minor, tt.wantMinor)
 			}
-			if gotRelease != tt.wantRelease {
-				t.Errorf("GetVaultVersionParsed() gotRelease = %v, want %v", gotRelease, tt.wantRelease)
+			if version.Release != tt.wantRelease {
+				t.Errorf("GetVaultVersionParsed() gotRelease = %v, want %v", version.Release, tt.wantRelease)
+			}
+		})
+	}
+}
+
+func TestGetUnsealCommand(t *testing.T) {
+	vaultKey := "fake-key"
+	vaultOperator := exec.Command("vault", "operator", "unseal", vaultKey)
+	vaultDeprecated := exec.Command("vault", "unseal", vaultKey)
+
+	tests := []struct {
+		name    string
+		version string
+		want    *exec.Cmd
+		wantErr bool
+	}{
+		{"deprecated", "0.9.0", vaultDeprecated, false},
+		{"operator", "0.9.5", vaultOperator, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vaultVersionCommand = exec.Command("echo", fmt.Sprintf("Vault v%s ('36edb4d42380d89a897e7f633046423240b710d9')", tt.version))
+			got, err := GetUnsealCommand(vaultKey)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetUnsealCommand() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetUnsealCommand() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_isVersionLower(t *testing.T) {
+	type args struct {
+		source Version
+		target Version
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{"lower-minor", args{Version{0, 9, 2}, Version{1, 9, 2}}, true},
+		{"lower-major", args{Version{0, 9, 2}, Version{0, 10, 3}}, true},
+		{"lower-release", args{Version{0, 9, 2}, Version{0, 9, 3}}, true},
+		{"equal", args{Version{0, 9, 2}, Version{0, 9, 2}}, false},
+		{"greater", args{Version{0, 10, 2}, Version{0, 9, 2}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isVersionLower(tt.args.source, tt.args.target); got != tt.want {
+				t.Errorf("isVersionLower() = %v, want %v", got, tt.want)
 			}
 		})
 	}
