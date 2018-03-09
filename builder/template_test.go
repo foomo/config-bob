@@ -89,7 +89,7 @@ func TestTemplateFuncs(t *testing.T) {
 }
 
 func TestTemplateReplace(t *testing.T) {
-	data := map[string]interface{}{"data": "test\ntest"        }
+	data := map[string]interface{}{"data": "test\ntest"}
 	template := `{{ replace "\n" " " .data}}`
 	content, _ := renderTemplate(template, data)
 	if content != "test test" {
@@ -98,7 +98,7 @@ func TestTemplateReplace(t *testing.T) {
 }
 
 func TestTemplateReplaceChaining(t *testing.T) {
-	data := map[string]interface{}{"data": "a-test-test-a"        }
+	data := map[string]interface{}{"data": "a-test-test-a"}
 	template := `{{ substr .data "2:11" | replace "-" " "}}`
 	content, err := renderTemplate(template, data)
 	if err != nil {

@@ -55,7 +55,7 @@ func TestFilesAndFolders(t *testing.T) {
 }
 
 func TestProcess(t *testing.T) {
-	vault.VaultDummy = true
+	vault.Dummy = true
 	exampleA := GetExample("source-a")
 	data := make(map[string]interface{})
 	jsonBytes, err := ioutil.ReadFile(GetExample("data.json"))

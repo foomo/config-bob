@@ -56,7 +56,7 @@ func getLocalVaultAddress() string {
 
 func LocalSetEnv() {
 	os.Setenv("VAULT_ADDR", getLocalVaultAddress())
-	fmt.Println("setting environment variable VAULT_ADDR:",getLocalVaultAddress())
+	fmt.Println("setting environment variable VAULT_ADDR:", getLocalVaultAddress())
 }
 
 func LocalSetup(folder string) error {
@@ -88,7 +88,7 @@ func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error) {
 
 	var runErr error
 	go func() {
-		fmt.Println("starting vault server with config.hcl in directory",folder)
+		fmt.Println("starting vault server with config.hcl in directory", folder)
 
 		cmd.Run()
 		chanVaultErr <- runErr
@@ -115,38 +115,12 @@ func LocalIsRunning() bool {
 	addr := os.Getenv("VAULT_ADDR")
 	response, err := http.Get(addr + "/v1/sys/init")
 	if err != nil {
-		fmt.Println("Could not get vault from address "+addr)
+		fmt.Println("Could not get vault from address " + addr)
 		fmt.Println(err)
 		return false
 	}
 	contentTypes, ok := response.Header["Content-Type"]
 	return (response.StatusCode == http.StatusOK) && ok && len(contentTypes) == 1 && contentTypes[0] == "application/json"
-}
-
-func _LocalIsRunning() bool {
-	cmd := exec.Command("vault", "status")
-	err := cmd.Run()
-	//fmt.Println("state:", cmd.ProcessState.ExitStatus(), err, string(combined))
-
-	if exiterr, ok := err.(*exec.ExitError); ok {
-		// The program has exited with an exit code != 0
-
-		// This works on both Unix and Windows. Although package
-		// syscall is generally platform dependent, WaitStatus is
-		// defined for both Unix and Windows and in both cases has
-		// an ExitStatus() method with the same signature.
-		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-			switch status.ExitStatus() {
-			case 2:
-				// sealed but up
-				return true
-			default:
-				log.Println("vault is in status", status.ExitStatus())
-			}
-		}
-	}
-
-	return err == nil
 }
 
 func LocalIsSetUp(folder string) bool {

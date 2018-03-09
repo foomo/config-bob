@@ -50,9 +50,9 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 	if len(ignore) > 2 {
 		fmt.Println("found .bobignore, ignoring", strings.Join(ignore, ", "))
 	}
-	copy := getCopy(folderPath)
-	if len(copy) > 0 {
-		fmt.Println("found .bobcopy, copying", strings.Join(copy, ", "))
+	copiedFiles := getCopy(folderPath)
+	if len(copiedFiles) > 0 {
+		fmt.Println("found .bobcopy, copying", strings.Join(copiedFiles, ", "))
 	}
 	folders, err := getFolders(folderPath, ignore)
 	if err != nil {
@@ -69,7 +69,7 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 	for _, file := range files {
 		run := true
 
-		for _, copyFile := range copy {
+		for _, copyFile := range copiedFiles {
 			if strings.HasPrefix(file, copyFile) || file == copyFile {
 				run = false
 				break
@@ -102,32 +102,22 @@ func rawSecret(key string) (v string, err error) {
 	return v, errors.New(v)
 }
 
-func rawTemplate(data interface{}, key string) string {
-	t, err := template.New("temp").Parse("{{ " + key + " }}")
-	if err != nil {
-		return key + "caused error: " + err.Error()
-	}
-	out := bytes.NewBuffer([]byte{})
-	err = t.Execute(out, data)
-	return string(out.Bytes())
-}
-
 func processFile(filename string, data interface{}, run bool) (result *fileResult, err error) {
 	fileContents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, nil
 	}
-	var bytes []byte
+	var byteData []byte
 	if run {
 		fmt.Println("processing :", filename)
 		processedBytes, err := process(filename, string(fileContents), data)
 		if err != nil {
 			return nil, err
 		}
-		bytes = processedBytes
+		byteData = processedBytes
 	} else {
 		fmt.Println("copying    :", filename)
-		bytes = fileContents
+		byteData = fileContents
 	}
 
 	info, err := os.Stat(filename)
@@ -136,7 +126,7 @@ func processFile(filename string, data interface{}, run bool) (result *fileResul
 	}
 	return &fileResult{
 		filename: filename,
-		bytes:    bytes,
+		bytes:    byteData,
 		info:     info,
 	}, nil
 

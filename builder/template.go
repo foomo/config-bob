@@ -66,7 +66,7 @@ var TemplateFuncs = template.FuncMap{
 	},
 	"indent": func(code, indent string) (string, error) {
 		lines := strings.Split(code, "\n")
-		indented := []string{}
+		var indented []string
 		for _, line := range lines {
 			indented = append(indented, indent+line)
 		}
@@ -106,10 +106,6 @@ var TemplateFuncs = template.FuncMap{
 	"replace": replace,
 }
 
-func replace(search string, replace string,value interface{}) (v string, err error) {
+func replace(search string, replace string, value interface{}) (v string, err error) {
 	return strings.Replace(value.(string), search, replace, -1), nil
-}
-
-func getTemplateFuncs(data interface{}) template.FuncMap {
-	return TemplateFuncs
 }

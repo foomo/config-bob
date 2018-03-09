@@ -15,7 +15,7 @@ import (
 )
 
 // Build
-func Build(args *BuilderArgs) (result *ProcessingResult, err error) {
+func Build(args *Args) (result *ProcessingResult, err error) {
 	fmt.Println(line)
 	fmt.Println("building")
 	fmt.Println("data from      :", args.DataFile)
@@ -26,7 +26,7 @@ func Build(args *BuilderArgs) (result *ProcessingResult, err error) {
 	if err != nil {
 		return nil, errors.New("could not read data from: " + args.DataFile + " :: " + err.Error())
 	}
-	results := []*ProcessingResult{}
+	var results []*ProcessingResult
 	if len(args.SourceFolders) == 0 {
 		return nil, errors.New("there has to be at least one source folder")
 	}
@@ -108,7 +108,7 @@ func getCopy(root string) (copy []string) {
 }
 
 func getStuff(root, name string) []string {
-	stuff := []string{}
+	var stuff []string
 	stuffFile := path.Join(root, name)
 	stuffBytes, err := ioutil.ReadFile(stuffFile)
 	if err == nil {
@@ -199,7 +199,7 @@ func walk(root string, ignore []string, filter func(path string, fileInfo os.Fil
 }
 
 func filterFiles(root string, ignore []string, filter func(path string, fileInfo os.FileInfo) bool) ([]string, error) {
-	files := []string{}
+	var files []string
 	prefix := root + string(os.PathSeparator)
 	err := walk(root, ignore, func(path string, fileInfo os.FileInfo) (descend bool) {
 		if filter(path, fileInfo) && !fileIsIgnored(root, path, ignore) {

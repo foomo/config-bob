@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-// BuilderArgs arguments for the builder
-type BuilderArgs struct {
+// Args arguments for the builder
+type Args struct {
 	DataFile      string
 	SourceFolders []string
 	TargetFolder  string
 }
 
-func GetBuilderArgs(args []string) (ba *BuilderArgs, err error) {
-	ba = &BuilderArgs{
+func GetBuilderArgs(args []string) (ba *Args, err error) {
+	ba = &Args{
 		DataFile:      "",
 		SourceFolders: []string{},
 		TargetFolder:  "",

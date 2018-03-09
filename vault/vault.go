@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"strings"
-	"strconv"
 	"regexp"
+	"strconv"
+	"strings"
 )
 
 const vaultAddr = "127.0.0.1:8200"
@@ -67,26 +67,21 @@ func GetVaultVersionParsed() (major, minor, release int, err error) {
 	return versionData[0], versionData[1], versionData[2], nil
 }
 
-// CheckEnv checks if vault is installed in the right version and set up
-func CheckEnv() bool {
-	return false
-}
-
 func vaultErr(combinedOutput []byte, err error) error {
 	return fmt.Errorf("err: %q, output: %q", err, string(combinedOutput))
 }
 
 // VaultDummy enables a built in dummy
-var VaultDummy = false
+var Dummy = false
 
 // Read data from a vault - env vars need to be set
 func Read(path string) (secret map[string]string, err error) {
-	if VaultDummy {
+	if Dummy {
 		return map[string]string{
 			"token":    "well-a-token",
 			"name":     "call my name",
 			"user":     "user-from" + path,
-			"s": "dummy-password",
+			"password": "dummy-password",
 			"escape":   "muha\"haha",
 		}, nil
 	}

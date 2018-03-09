@@ -121,7 +121,7 @@ How to add a compatible vault entry:
 vault write secret/foo user=foo password=secret
 ```
 
-## Intergration with [vault](//vaultproject.io/)
+## Intergration with [vault](https://vaultproject.io/)
 
 When using the secret templating syntax metioned above Bob will be looking up those secrets in a vault server using vault http interface v1.
 
@@ -139,4 +139,4 @@ config-bob vault-local path/to/vault-folder
 
 So far Bob has been running on OSX and Linux.
 
-- [vault](//vaultproject.io) tested with Vault v0.3.1, but as long as REST API v1 is there I do not expect
+- [vault](https://vaultproject.io) tested with Vault v0.3.1, but as long as REST API v1 is there I do not expect

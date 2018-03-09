@@ -17,18 +17,18 @@ func poe(err error) {
 }
 
 func TestHtpasswd(t *testing.T) {
-	VaultDummy = true
+	Dummy = true
 	testDir, err := ioutil.TempDir(os.TempDir(), "htpasswd-config-test-dir-")
 	poe(err)
 	testConfigFile, err := ioutil.TempFile(os.TempDir(), "htpasswd-config")
 	poe(err)
 
 	cnf := map[string][]string{
-		testDir + "/foo/test/bar": []string{
+		testDir + "/foo/test/bar": {
 			"secret/foo",
 			"secret/bar",
 		},
-		testDir + "/foo/hansi": []string{
+		testDir + "/foo/hansi": {
 			"secret/a",
 		},
 	}
