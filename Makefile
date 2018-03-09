@@ -1,5 +1,4 @@
-TAG=`git describe --exact-match --tags $(git log -n1 --pretty='%h') 2>/dev/null || git rev-parse --abbrev-ref HEAD`
-#LDFLAGS='-ldflags -X main.Version=$(TAG)'
+TAG=`git describe --tags`
 LDFLAGS=-ldflags "-X main.Version=${TAG}"
 
 all: test build
