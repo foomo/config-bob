@@ -140,3 +140,4 @@ config-bob vault-local path/to/vault-folder
 So far Bob has been running on OSX and Linux.
 
 - [vault](https://vaultproject.io) tested with Vault v0.3.1, but as long as REST API v1 is there I do not expect
+
