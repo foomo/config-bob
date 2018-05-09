@@ -4,6 +4,7 @@ import (
 	"os"
 	"io/ioutil"
 	"encoding/json"
+	"path/filepath"
 )
 
 var _ KeyStore = &localStore{}
@@ -41,12 +42,13 @@ func (ls *localStore) load() error {
 }
 
 func (ls *localStore) save() error {
+	os.MkdirAll(filepath.Dir(ls.path), 0700)
 	data, err := json.Marshal(ls.credentials)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(ls.path, data, 0644)
+	return ioutil.WriteFile(ls.path, data, 0600)
 }
 
 // Stores the credentials for the vault in the specified location

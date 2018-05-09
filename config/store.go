@@ -1,7 +1,12 @@
 package config
 
+import (
+	"os"
+	"path"
+)
+
 const (
-	defaultLocalStoreLocation = ".cfb/vault-store"
+	defaultLocalStoreLocation = ".cfb/vault-store.json"
 )
 
 type KeyStore interface {
@@ -16,5 +21,7 @@ type VaultCredentials struct {
 }
 
 func NewKeyStore() (KeyStore, error) {
-	return newLocalStore(defaultLocalStoreLocation)
+	home, _ := os.LookupEnv("HOME")
+	keyStorePath := path.Join(home, defaultLocalStoreLocation)
+	return newLocalStore(keyStorePath)
 }

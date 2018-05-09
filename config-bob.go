@@ -12,6 +12,7 @@ import (
 	"github.com/foomo/htpasswd"
 	"log"
 	"github.com/foomo/config-bob/config"
+	"path/filepath"
 )
 
 // Version constant specifies the current version of the script
@@ -43,8 +44,9 @@ func init() {
 	if _, ok := os.LookupEnv("CFB_DISABLE_STORE"); !ok {
 		ks, err := config.NewKeyStore()
 		if err != nil {
-			fmt.Println("could not initialize vault key store", err)
+			fmt.Println("VAULT-STORE: Could not initialize vault key store, not using vault store", err)
 		} else {
+			fmt.Println("VAULT-STORE: Enabled")
 			useVaultKeyStore = true
 			vaultKeyStore = ks
 		}
@@ -65,7 +67,7 @@ func help() {
 }
 
 func versionCommand() {
-	fmt.Print(Version)
+	fmt.Println(Version)
 }
 
 func vaultTreeCommand() {
@@ -109,7 +111,11 @@ func vaultLocalCommand() {
 		if isHelpFlag(os.Args[2]) {
 			vaultLocalUsage()
 		}
-		vaultFolder := os.Args[2]
+		vaultFolder, err := filepath.Abs(os.Args[2])
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 		vault.LocalSetEnv()
 		if !vault.LocalIsSetUp(vaultFolder) {
 			fmt.Println("setting up vault tree")
@@ -147,12 +153,16 @@ func vaultLocalCommand() {
 			} else {
 				fmt.Println(string(out))
 				//STORE VALID CREDENTIALS FOR VAULT
+				fmt.Println("VAULT-STORE: Persisting valid token/key values for vault")
 				if useVaultKeyStore {
-					vaultKeyStore.Store(config.VaultCredentials{
+					storeErr := vaultKeyStore.Store(config.VaultCredentials{
 						Path:  vaultFolder,
 						Token: vaultToken,
 						Keys:  vaultKeys,
 					})
+					if storeErr != nil {
+						fmt.Println("VAULT-STORE: Error ocurred while persiting vault: ", storeErr.Error())
+					}
 				}
 			}
 		}
@@ -209,6 +219,7 @@ func getVaultToken(vaultFolder string) string {
 
 	if useVaultKeyStore {
 		if cred, ok := vaultKeyStore.Lookup(vaultFolder); ok {
+			fmt.Println("VAULT-STORE: Using token from existing vault store")
 			return cred.Token
 		}
 	}
@@ -230,9 +241,11 @@ func getVaultKeys(vaultFolder string) (vaultKeys []string) {
 	if environmentKeys != "" {
 		fmt.Println("Using key from CFB_KEYS environment variable")
 		vaultKeys = strings.Split(environmentKeys, ",")
+		return vaultKeys
 	}
 	if useVaultKeyStore {
 		if cred, ok := vaultKeyStore.Lookup(vaultFolder); ok {
+			fmt.Println("VAULT-STORE: Using keys from existing vault store")
 			return cred.Keys
 		}
 	}
