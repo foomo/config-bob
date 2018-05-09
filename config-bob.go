@@ -11,10 +11,16 @@ import (
 	"github.com/foomo/config-bob/vault"
 	"github.com/foomo/htpasswd"
 	"log"
+	"github.com/foomo/config-bob/config"
 )
 
 // Version constant specifies the current version of the script
 var Version string
+
+var (
+	vaultKeyStore    config.KeyStore
+	useVaultKeyStore = false
+)
 
 const helpCommands = `
 Commands:
@@ -32,6 +38,18 @@ const (
 	commandVaultTree  = "vault-tree"
 	commandHtpasswd   = "vault-htpasswd"
 )
+
+func init() {
+	if _, ok := os.LookupEnv("CFB_DISABLE_STORE"); !ok {
+		ks, err := config.NewKeyStore()
+		if err != nil {
+			fmt.Println("could not initialize vault key store", err)
+		} else {
+			useVaultKeyStore = true
+			vaultKeyStore = ks
+		}
+	}
+}
 
 func isHelpFlag(arg string) bool {
 	switch arg {
@@ -109,9 +127,9 @@ func vaultLocalCommand() {
 
 		vaultCommand, chanVaultErr := vault.LocalStart(vaultFolder)
 
-		vaultKeys := getVaultKeys()
-
-		setVaultToken()
+		vaultKeys := getVaultKeys(vaultFolder)
+		vaultToken := getVaultToken(vaultFolder)
+		os.Setenv("VAULT_TOKEN", vaultToken)
 
 		if len(vaultKeys) > 0 {
 			fmt.Println("trying to unseal vault:")
@@ -128,6 +146,14 @@ func vaultLocalCommand() {
 				fmt.Println("could not unseal vault", err, string(out))
 			} else {
 				fmt.Println(string(out))
+				//STORE VALID CREDENTIALS FOR VAULT
+				if useVaultKeyStore {
+					vaultKeyStore.Store(config.VaultCredentials{
+						Path:  vaultFolder,
+						Token: vaultToken,
+						Keys:  vaultKeys,
+					})
+				}
 			}
 		}
 
@@ -174,44 +200,56 @@ func vaultLocalCommand() {
 	}
 }
 
-func setVaultToken() {
-	environmentToken := os.Getenv("CFB_TOKEN")
-	if environmentToken != "" {
+func getVaultToken(vaultFolder string) string {
+	vaultToken := os.Getenv("CFB_TOKEN")
+	if vaultToken != "" {
 		fmt.Println("Using token from CFB_TOKEN environment variable")
-		os.Setenv("VAULT_TOKEN", environmentToken)
-	} else {
-		vaultToken, err := speakeasy.Ask("enter vault token:")
-		if err != nil {
-			fmt.Println("could not read token", err)
-			os.Exit(1)
-		}
-		if len(vaultToken) > 0 {
-			fmt.Println("exporting vault token", vaultToken)
-			os.Setenv("VAULT_TOKEN", vaultToken)
+		return vaultToken
+	}
+
+	if useVaultKeyStore {
+		if cred, ok := vaultKeyStore.Lookup(vaultFolder); ok {
+			return cred.Token
 		}
 	}
+
+	vaultToken, err := speakeasy.Ask("enter vault token:")
+	if err != nil {
+		fmt.Println("could not read token", err)
+		os.Exit(1)
+	}
+	if len(vaultToken) > 0 {
+		fmt.Println("Using token from standard input", vaultToken)
+	}
+
+	return vaultToken
 }
 
-func getVaultKeys() (vaultKeys []string) {
+func getVaultKeys(vaultFolder string) (vaultKeys []string) {
 	environmentKeys := os.Getenv("CFB_KEYS")
 	if environmentKeys != "" {
 		fmt.Println("Using key from CFB_KEYS environment variable")
 		vaultKeys = strings.Split(environmentKeys, ",")
-	} else {
-		fmt.Println("Enter keys to unseal, terminate with empty entry")
-		keyNumber := 1
-		for {
-			vaultKey, err := speakeasy.Ask(fmt.Sprintf("vault key %d:", keyNumber))
-			if err != nil {
-				fmt.Println("vault key")
-				os.Exit(1)
-			}
-			if len(vaultKey) == 0 {
-				break
-			}
-			vaultKeys = append(vaultKeys, vaultKey)
-			keyNumber++
+	}
+	if useVaultKeyStore {
+		if cred, ok := vaultKeyStore.Lookup(vaultFolder); ok {
+			return cred.Keys
 		}
+	}
+
+	fmt.Println("Enter keys to unseal, terminate with empty entry")
+	keyNumber := 1
+	for {
+		vaultKey, err := speakeasy.Ask(fmt.Sprintf("vault key %d:", keyNumber))
+		if err != nil {
+			fmt.Println("vault key")
+			os.Exit(1)
+		}
+		if len(vaultKey) == 0 {
+			break
+		}
+		vaultKeys = append(vaultKeys, vaultKey)
+		keyNumber++
 	}
 	return
 }

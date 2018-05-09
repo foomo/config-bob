@@ -1,7 +1,7 @@
 package config
 
 const (
-	localStoreLocation = ".cfb/vault-store"
+	defaultLocalStoreLocation = ".cfb/vault-store"
 )
 
 type KeyStore interface {
@@ -13,4 +13,8 @@ type VaultCredentials struct {
 	Path  string   `json:"path"`
 	Token string   `json:"token"`
 	Keys  []string `json:"keys"`
+}
+
+func NewKeyStore() (KeyStore, error) {
+	return newLocalStore(defaultLocalStoreLocation)
 }

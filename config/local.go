@@ -4,7 +4,6 @@ import (
 	"os"
 	"io/ioutil"
 	"encoding/json"
-	"fmt"
 )
 
 var _ KeyStore = &localStore{}
@@ -30,7 +29,6 @@ func (ls *localStore) load() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("LOADING")
 
 	var loadedCredentials []VaultCredentials
 	err = json.Unmarshal(data, &loadedCredentials)
