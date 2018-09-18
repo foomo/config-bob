@@ -64,12 +64,10 @@ func TestGetVaultVersionParsed(t *testing.T) {
 	tests := []struct {
 		name        string
 		version     string
-		wantMajor   int
-		wantMinor   int
-		wantRelease int
+		wantVersion string
 		wantErr     bool
 	}{
-		{"standard", "Vault v0.9.5 ('36edb4d42380d89a897e7f633046423240b710d9')", 0, 9, 5, false},
+		{"standard", "Vault v0.9.5 ('36edb4d42380d89a897e7f633046423240b710d9')", "0.9.5", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,14 +77,8 @@ func TestGetVaultVersionParsed(t *testing.T) {
 				t.Errorf("GetVaultVersionParsed() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if version.Major != tt.wantMajor {
-				t.Errorf("GetVaultVersionParsed() gotMajor = %v, want %v", version.Major, tt.wantMajor)
-			}
-			if version.Minor != tt.wantMinor {
-				t.Errorf("GetVaultVersionParsed() gotMinor = %v, want %v", version.Minor, tt.wantMinor)
-			}
-			if version.Release != tt.wantRelease {
-				t.Errorf("GetVaultVersionParsed() gotRelease = %v, want %v", version.Release, tt.wantRelease)
+			if version != tt.wantVersion {
+				t.Errorf("GetVaultVersionParsed() gotVersion = %v, want %v", version, tt.wantVersion)
 			}
 		})
 	}
@@ -116,31 +108,6 @@ func TestGetUnsealCommand(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetUnsealCommand() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_isVersionLower(t *testing.T) {
-	type args struct {
-		source Version
-		target Version
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{"lower-minor", args{Version{0, 9, 2}, Version{1, 9, 2}}, true},
-		{"lower-major", args{Version{0, 9, 2}, Version{0, 10, 3}}, true},
-		{"lower-release", args{Version{0, 9, 2}, Version{0, 9, 3}}, true},
-		{"equal", args{Version{0, 9, 2}, Version{0, 9, 2}}, false},
-		{"greater", args{Version{0, 10, 2}, Version{0, 9, 2}}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := isVersionLower(tt.args.source, tt.args.target); got != tt.want {
-				t.Errorf("isVersionLower() = %v, want %v", got, tt.want)
 			}
 		})
 	}

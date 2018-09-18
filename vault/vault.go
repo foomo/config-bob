@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
+
+	"github.com/mcuadros/go-version"
 )
 
 const vaultAddr = "127.0.0.1:8200"
@@ -16,27 +17,10 @@ type readResponse struct {
 	Data map[string]string
 }
 
-type Version struct {
-	Major, Minor, Release int
-}
-
 var vaultVersionCommand = exec.Command("vault", "-v")
 
-func isVersionLower(source Version, target Version) bool {
-	if source.Major < target.Major {
-		return true
-	}
-	if source.Minor < target.Minor {
-		return true
-	}
-	if source.Release < target.Release {
-		return true
-	}
-	return false
-}
-
 func GetUnsealCommand(vaultKey string) (*exec.Cmd, error) {
-	version, err := GetVaultVersionParsed()
+	vaultVersion, err := GetVaultVersionParsed()
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +28,8 @@ func GetUnsealCommand(vaultKey string) (*exec.Cmd, error) {
 	var args []string
 	//https://www.vaultproject.io/guides/upgrading/upgrade-to-0.9.2.html#backwards-compatible-cli-changes
 	//Breaking changes for 0.9.2+ => Operator
-	if isVersionLower(version, Version{0, 9, 2}) {
+
+	if version.Compare(vaultVersion, "0.9.2", "<") {
 		args = []string{"unseal", vaultKey}
 	} else {
 		args = []string{"operator", "unseal", vaultKey}
@@ -62,25 +47,18 @@ func GetVaultVersion() (version string, err error) {
 	return strings.Trim(string(out), "\n"), nil
 }
 
-func GetVaultVersionParsed() (version Version, err error) {
+func GetVaultVersionParsed() (version string, err error) {
 	versionString, err := GetVaultVersion()
 	if err != nil {
 		return
 	}
 
-	val := regexp.MustCompile(`Vault v(\d+).(\d+).(\d+)\s\('\w+'\)`).FindStringSubmatch(versionString)
-	if len(val) != 4 {
+	val := regexp.MustCompile(`Vault v(\d+\.\d+\.\d+)\s\('\w+'\)`).FindStringSubmatch(versionString)
+	if len(val) != 2 {
 		err = errors.New("invalid version format " + versionString)
 	}
 
-	versionData := make([]int, 3)
-	for i := 0; i < 3; i++ {
-		versionData[i], err = strconv.Atoi(val[i+1])
-		if err != nil {
-			return
-		}
-	}
-	return Version{versionData[0], versionData[1], versionData[2]}, nil
+	return val[1], nil
 }
 
 func vaultErr(combinedOutput []byte, err error) error {
