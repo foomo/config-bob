@@ -104,6 +104,7 @@ var TemplateFuncs = template.FuncMap{
 		return v, nil
 	},
 	"replace": replace,
+	"op":      onePassword,
 }
 
 func replace(search string, replace string, value interface{}) (v string, err error) {
