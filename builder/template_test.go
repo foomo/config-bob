@@ -91,6 +91,9 @@ func TestTemplateFuncs(t *testing.T) {
 		assertErr(`{{ op "kkwcxma7pbf3xaar7wgboj5zgmss" "foo" }}`)
 	}
 
+	assert(`{{ absPath "/foo/bar/../" }}`, "/foo")
+	assert(`{{ absPath "/foo/.." }}`, "/")
+
 }
 
 func TestTemplateReplace(t *testing.T) {

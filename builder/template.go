@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -105,6 +106,7 @@ var TemplateFuncs = template.FuncMap{
 	},
 	"replace": replace,
 	"op":      onePassword,
+	"absPath": filepath.Abs,
 }
 
 func replace(search string, replace string, value interface{}) (v string, err error) {
