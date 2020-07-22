@@ -8,10 +8,10 @@ import (
 
 	"github.com/bgentry/speakeasy"
 	"github.com/foomo/config-bob/builder"
+	"github.com/foomo/config-bob/config"
 	"github.com/foomo/config-bob/vault"
 	"github.com/foomo/htpasswd"
 	"log"
-	"github.com/foomo/config-bob/config"
 	"path/filepath"
 )
 
@@ -143,6 +143,7 @@ func vaultLocalCommand() {
 
 		for _, vaultKey := range vaultKeys {
 			unsealCommand, err := vault.GetUnsealCommand(vaultKey)
+			fmt.Println(unsealCommand)
 			if err != nil {
 				log.Fatal(err)
 			}

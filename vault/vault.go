@@ -20,20 +20,24 @@ type Version struct {
 	Major, Minor, Release int
 }
 
-var vaultVersionCommand = exec.Command("vault", "-v")
+func (v Version) String() string {
+	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Release)
+}
 
-func isVersionLower(source Version, target Version) bool {
-	if source.Major < target.Major {
+func (v Version) LowerThan(t Version) bool {
+	if v.Major < t.Major {
 		return true
 	}
-	if source.Minor < target.Minor {
+	if v.Major == t.Major && v.Minor < t.Minor {
 		return true
 	}
-	if source.Release < target.Release {
+	if v.Major == t.Major && v.Minor == t.Minor && v.Release < t.Release {
 		return true
 	}
 	return false
 }
+
+var vaultVersionCommand = exec.Command("vault", "-v")
 
 func GetUnsealCommand(vaultKey string) (*exec.Cmd, error) {
 	version, err := GetVaultVersionParsed()
@@ -44,7 +48,8 @@ func GetUnsealCommand(vaultKey string) (*exec.Cmd, error) {
 	var args []string
 	//https://www.vaultproject.io/guides/upgrading/upgrade-to-0.9.2.html#backwards-compatible-cli-changes
 	//Breaking changes for 0.9.2+ => Operator
-	if isVersionLower(version, Version{0, 9, 2}) {
+
+	if version.LowerThan(Version{Major: 0, Minor: 9, Release: 2}) {
 		args = []string{"unseal", vaultKey}
 	} else {
 		args = []string{"operator", "unseal", vaultKey}

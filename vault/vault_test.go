@@ -132,15 +132,16 @@ func Test_isVersionLower(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"lower-minor", args{Version{0, 9, 2}, Version{1, 9, 2}}, true},
-		{"lower-major", args{Version{0, 9, 2}, Version{0, 10, 3}}, true},
+		{"lower-major", args{Version{0, 9, 2}, Version{1, 9, 2}}, true},
+		{"lower-minor", args{Version{0, 7, 2}, Version{0, 8, 1}}, true},
 		{"lower-release", args{Version{0, 9, 2}, Version{0, 9, 3}}, true},
 		{"equal", args{Version{0, 9, 2}, Version{0, 9, 2}}, false},
 		{"greater", args{Version{0, 10, 2}, Version{0, 9, 2}}, false},
+		{"greater-major", args{Version{1, 1, 1}, Version{0, 2, 2}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isVersionLower(tt.args.source, tt.args.target); got != tt.want {
+			if got := tt.args.source.LowerThan(tt.args.target); got != tt.want {
 				t.Errorf("isVersionLower() = %v, want %v", got, tt.want)
 			}
 		})
