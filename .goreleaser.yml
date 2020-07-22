@@ -14,17 +14,17 @@ builds:
 
 # .goreleaser.yml
 archives:
-  format: tar.gz
-  format_overrides:
-    - goos: windows
-      format: zip
+  - format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
 
 brews:
   # Reporitory to push the tap to.
-  github:
-    owner: foomo
-    name: homebrew-config-bob
+  - github:
+      owner: foomo
+      name: homebrew-config-bob
 
-  caveats: "config-bob -h"
-  homepage: "https://github.com/foomo/config-bob"
-  description: "CLI utility to generate secure configurations"
+    caveats: "config-bob -h"
+    homepage: "https://github.com/foomo/config-bob"
+    description: "CLI utility to generate secure configurations"

@@ -6,6 +6,7 @@ require (
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/foomo/htpasswd v0.0.0-20200116085101-e3a90e78da9c
+	github.com/goreleaser/goreleaser v0.140.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/stretchr/testify v1.6.1
