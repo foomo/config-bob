@@ -70,6 +70,7 @@ func TestGetVaultVersionParsed(t *testing.T) {
 		wantErr     bool
 	}{
 		{"standard", "Vault v0.9.5 ('36edb4d42380d89a897e7f633046423240b710d9')", 0, 9, 5, false},
+		{"standard", "Vault v1.4.3 ('491533b63ec9c1343eac3a24d8a7558185a0acb7+CHANGES')", 1, 4, 3, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

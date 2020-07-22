@@ -68,16 +68,16 @@ func GetVaultVersionParsed() (version Version, err error) {
 		return
 	}
 
-	val := regexp.MustCompile(`Vault v(\d+).(\d+).(\d+)\s\('\w+'\)`).FindStringSubmatch(versionString)
+	val := regexp.MustCompile(`Vault v(\d+).(\d+).(\d+).*`).FindStringSubmatch(versionString)
 	if len(val) != 4 {
-		err = errors.New("invalid version format " + versionString)
+		return Version{}, fmt.Errorf("invalid version format %q", versionString)
 	}
 
 	versionData := make([]int, 3)
 	for i := 0; i < 3; i++ {
 		versionData[i], err = strconv.Atoi(val[i+1])
 		if err != nil {
-			return
+			return Version{}, err
 		}
 	}
 	return Version{versionData[0], versionData[1], versionData[2]}, nil
