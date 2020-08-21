@@ -7,49 +7,67 @@ import (
 	"strings"
 )
 
-func treeIndent(level int) string {
-	return strings.Repeat("  ", level)
+// Tree a tree of secrets
+func Tree(path string) error {
+	data, err := tree(path)
+	if err != nil {
+		return err
+	}
+
+	for p, d := range data {
+		fmt.Printf("\n\n%s", p)
+		for k, v := range d {
+			v := strings.Replace(v, "\n", "\\n", -1)
+			fmt.Printf("\n\t%s=%s", k, v)
+		}
+	}
+	fmt.Printf("\nlisting done\n")
+	return nil
 }
 
-// Tree a tree of secrets
-func Tree(path string, level int) (err error) {
+func tree(path string) (map[string]map[string]string, error) {
+	path = strings.TrimSuffix(path, "/")
 	cmd := exec.Command("vault", "list", "-format", "json", path)
 	jsonBytes, err := cmd.CombinedOutput()
 	if err != nil {
-		return vaultErr(jsonBytes, err)
+		return nil, vaultErr(jsonBytes, err)
 	}
 	var paths []string
 	if string(jsonBytes) == "No entries found\n" {
 		// thank you for the json
-		return nil
+		return nil, nil
 	}
 	err = json.Unmarshal(jsonBytes, &paths)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	vaultData := map[string]map[string]string{}
 	for _, p := range paths {
-		current := path + "/" + p
-		fmt.Println(treeIndent(level), p)
+		current := fmt.Sprintf("%s/%s", strings.TrimSuffix(path, "/"), strings.TrimPrefix(p, "/"))
 		if strings.HasSuffix(p, "/") {
-			err = Tree(path+"/"+p[:len(p)-1], level+1)
+			path := path + "/" + p[:len(p)-1]
+
+			data, err := tree(path)
 			if err != nil {
-				return err
+				return nil, err
 			}
+			for key, value := range data {
+				vaultData[key] = value
+			}
+
 		} else {
 			data, err := Read(current)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			padLength := 0
-			for key := range data {
-				if len(key) > padLength {
-					padLength = len(key)
-				}
-			}
+			vaultData[current] = map[string]string{}
 			for key, value := range data {
-				fmt.Println(treeIndent(level+1), key, strings.Repeat(" ", padLength-len(key)), ":", value)
+				vaultData[current][key] = value
 			}
 		}
+
 	}
-	return nil
+
+	return vaultData, nil
 }

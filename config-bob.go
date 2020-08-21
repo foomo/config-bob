@@ -78,7 +78,7 @@ func vaultTreeCommand() {
 	fmt.Println("vault tree:")
 	path := strings.TrimRight(os.Args[2], "/") + "/"
 	fmt.Println(path)
-	err := vault.Tree(path, 1)
+	err := vault.Tree(path)
 	if err != nil {
 		fmt.Println("failed to show tree", err)
 		os.Exit(1)
@@ -135,7 +135,7 @@ func vaultLocalCommand() {
 
 		vaultKeys := getVaultKeys(vaultFolder)
 		vaultToken := getVaultToken(vaultFolder)
-		os.Setenv("VAULT_TOKEN", vaultToken)
+		_ = os.Setenv("VAULT_TOKEN", vaultToken)
 
 		if len(vaultKeys) > 0 {
 			fmt.Println("trying to unseal vault:")
@@ -181,7 +181,7 @@ func vaultLocalCommand() {
 
 		go func() {
 			vaultRunErr := <-chanVaultErr
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 			fmt.Println("vault died on us")
 			if vaultRunErr != nil {
 				fmt.Println("vault error", vaultRunErr.Error())
