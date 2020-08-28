@@ -18,15 +18,17 @@ import (
 func Build(args *Args) (result *ProcessingResult, err error) {
 	fmt.Println(line)
 	fmt.Println("building")
-	fmt.Println("data from      :", args.DataFile)
+	fmt.Println("data files     :", strings.Join(args.DataFiles, ", "))
 	fmt.Println("source folders :", strings.Join(args.SourceFolders, ", "))
 	fmt.Println("target folder  :", args.TargetFolder)
 	fmt.Println(line)
-	data, err := readData(args.DataFile)
+	data, err := readData(args.DataFiles)
 	if err != nil {
-		return nil, errors.New("could not read data from: " + args.DataFile + " :: " + err.Error())
+		return nil, errors.New("could not read data from: " + strings.Join(args.DataFiles, ", ") + " :: " + err.Error())
 	}
+
 	var results []*ProcessingResult
+
 	if len(args.SourceFolders) == 0 {
 		return nil, errors.New("there has to be at least one source folder")
 	}
@@ -41,10 +43,17 @@ func Build(args *Args) (result *ProcessingResult, err error) {
 		}
 		results = append(results, result)
 	}
-	result = results[0]
-	for _, r := range results[1:] {
-		result.Merge(r)
+	if len(results) == 0 {
+		return nil, nil
 	}
+
+	result = results[0]
+	if len(results) > 1 {
+		for _, r := range results[1:] {
+			result.Merge(r)
+		}
+	}
+
 	return result, nil
 }
 
@@ -84,23 +93,32 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	return nil
 }
 
-func readData(file string) (data interface{}, err error) {
-	if len(file) == 0 {
+func readData(files []string) (interface{}, error) {
+	if len(files) == 0 {
 		return nil, nil
 	}
-	dataBytes, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, errors.New("could not read data file: " + err.Error())
+	data := make(map[string]interface{})
+
+	for _, file := range files {
+		fileData := make(map[string]interface{})
+
+		dataBytes, err := ioutil.ReadFile(file)
+		if err != nil {
+			return nil, errors.New("could not read data file: " + err.Error())
+		}
+		if strings.HasSuffix(file, ".json") {
+			err = json.Unmarshal(dataBytes, &fileData)
+		} else if strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml") {
+			err = yaml.Unmarshal(dataBytes, &fileData)
+		} else {
+			return nil, errors.New("unsupported data file format i need .json, .yml or .yaml")
+		}
+
+		for k, v := range fileData {
+			data[k] = v
+		}
 	}
-	d := make(map[string]interface{})
-	if strings.HasSuffix(file, ".json") {
-		err = json.Unmarshal(dataBytes, &d)
-	} else if strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml") {
-		err = yaml.Unmarshal(dataBytes, &d)
-	} else {
-		return nil, errors.New("unsupported data file format i need .json, .yml or .yaml")
-	}
-	return d, err
+	return data, nil
 }
 
 func getCopy(root string) (copy []string) {
@@ -175,6 +193,10 @@ func resolve(info os.FileInfo, p string) (targetInfo os.FileInfo, err error) {
 
 func walk(root string, ignore []string, filter func(path string, fileInfo os.FileInfo) (descend bool)) (err error) {
 	f, err := os.Open(root)
+	if err != nil {
+		return err
+	}
+
 	fileInfos, err := f.Readdir(0)
 	if err != nil {
 		return

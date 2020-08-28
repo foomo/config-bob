@@ -106,6 +106,7 @@ func Read(path string) (secret map[string]string, err error) {
 			"escape":   "muha\"haha",
 		}, nil
 	}
+
 	jsonBytes, err := exec.Command("vault", "read", "-format", "json", path).CombinedOutput()
 	if err != nil {
 		return nil, vaultErr(jsonBytes, err)
