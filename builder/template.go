@@ -104,10 +104,19 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return v, nil
 	},
-	"replace":     replace,
-	"op":          onePassword,
-	"absPath":     filepath.Abs,
-	"StringsJoin": strings.Join,
+	"replace": replace,
+	"op":      onePassword,
+	"absPath": filepath.Abs,
+	"join":    join,
+}
+
+func join(value interface{}, separator string) (string, error) {
+	switch value.(type) {
+	case []string:
+		return strings.Join(value.([]string), separator), nil
+	default:
+		return "", errors.New("function only supports string array")
+	}
 }
 
 func replace(search string, replace string, value interface{}) (v string, err error) {
