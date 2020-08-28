@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -111,11 +112,21 @@ var TemplateFuncs = template.FuncMap{
 }
 
 func join(value interface{}, separator string) (string, error) {
-	switch value.(type) {
-	case []string:
-		return strings.Join(value.([]string), separator), nil
+
+	switch reflect.ValueOf(value).Kind() {
+	case reflect.Slice, reflect.Ptr:
+		values := reflect.Indirect(reflect.ValueOf(value))
+
+		var data []string
+
+		for i := 0; i < values.Len(); i++ {
+			v := values.Index(i).Interface()
+			data = append(data, fmt.Sprint(v))
+		}
+
+		return strings.Join(data, separator), nil
 	default:
-		return "", errors.New("function only supports string array")
+		return "", fmt.Errorf("function only supports slice, not %q", reflect.TypeOf(value).String())
 	}
 }
 

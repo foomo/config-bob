@@ -47,7 +47,7 @@ func TestTemplateFuncs(t *testing.T) {
 		testEnvName  = "THIS_IS_JUST_A_TEST"
 		testEnvValue = "a test value"
 	)
-	os.Setenv(testEnvName, testEnvValue)
+	_ = os.Setenv(testEnvName, testEnvValue)
 	assert("{{ env \""+testEnvName+"\" }}", testEnvValue)
 
 	assert(`{{ json .nested }}`, `{"foo":"bar"}`)
@@ -114,5 +114,34 @@ func TestTemplateReplaceChaining(t *testing.T) {
 	}
 	if content != "test test" {
 		t.Fatal("Template didn't work")
+	}
+}
+
+func Test_join(t *testing.T) {
+	type args struct {
+		value     interface{}
+		separator string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{"single", args{"test", ","}, "", true},
+		{"string slice", args{[]string{"a", "b", "c"}, ","}, "a,b,c", false},
+		{"int slice", args{[]int{1, 2, 3}, ","}, "1,2,3", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := join(tt.args.value, tt.args.separator)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("join() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("join() got = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
