@@ -16,4 +16,3 @@ build-arch: prepare
 
 release:
 	goreleaser --rm-dist
-

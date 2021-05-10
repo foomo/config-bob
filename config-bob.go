@@ -6,13 +6,13 @@ import (
 	"os/exec"
 	"strings"
 
+	"log"
+	"path/filepath"
+
 	"github.com/bgentry/speakeasy"
-	"github.com/foomo/config-bob/builder"
 	"github.com/foomo/config-bob/config"
 	"github.com/foomo/config-bob/vault"
 	"github.com/foomo/htpasswd"
-	"log"
-	"path/filepath"
 )
 
 // Version constant specifies the current version of the script
@@ -268,40 +268,6 @@ func getVaultKeys(vaultFolder string) (vaultKeys []string) {
 	return
 }
 
-func buildCommand() {
-	buildUsage := func() {
-		fmt.Println(
-			"usage: ",
-			os.Args[0],
-			commandBuild,
-			"path/to/source-folder-a",
-			"[ path/to/source-folder-b, ... ]",
-			"[ path/to/data-file.json | data-file.yaml ]",
-			"path/to/target/dir",
-		)
-		os.Exit(1)
-	}
-	if isHelpFlag(os.Args[2]) {
-		buildUsage()
-	}
-	builderArgs, err := builder.GetBuilderArgs(os.Args[2:])
-	if err != nil {
-		fmt.Println(err.Error())
-		buildUsage()
-	} else {
-		result, err := builder.Build(builderArgs)
-		if err != nil {
-			fmt.Println("a build error has occurred:", err.Error())
-			os.Exit(1)
-		}
-		writeError := builder.WriteProcessingResult(builderArgs.TargetFolder, result)
-		if writeError != nil {
-			fmt.Println("could not write processing result to fs:", writeError.Error())
-			os.Exit(1)
-		}
-	}
-}
-
 func main() {
 
 	if len(os.Args) > 1 {
@@ -314,8 +280,6 @@ func main() {
 			htpasswdCommand()
 		case commandVaultLocal:
 			vaultLocalCommand()
-		case commandBuild:
-			buildCommand()
 		default:
 			fmt.Println("unknown command", "\""+os.Args[1]+"\"")
 			help()

@@ -13,7 +13,7 @@ We needed a simple tool to populate our app configurations with data and **secre
 ## Building
 
 ```bash
-config-bob build path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
+config-bob build -v path/to/data.json -t path/to/src/dir/a -t path/to/src/dir/b -o path/to/target/dir
 ```
 
 ### Bobs template helpers
