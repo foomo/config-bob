@@ -268,7 +268,7 @@ func getVaultKeys(vaultFolder string) (vaultKeys []string) {
 	return
 }
 
-func main() {
+func oldMain() {
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {

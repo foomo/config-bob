@@ -9,7 +9,8 @@ prepare: clean
 test: prepare
 	go test -v ./...
 build: prepare
-	go build $(LDFLAGS) config-bob.go
+	go build $(LDFLAGS) -o config-bob main.go
+
 build-arch: prepare
 	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/config-bob-linux-amd64_$(TAG) config-bob.go
 	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o bin/config-bob-darwin-amd64_$(TAG) config-bob.go

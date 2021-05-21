@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/1Password/connect-sdk-go/connect"
+	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/pkg/errors"
 )
 
@@ -65,17 +66,24 @@ func (op OnePasswordConnect) GetSecret(path string) (string, error) {
 		return "", err
 	}
 
-	eq := func(a, b string) bool {
-		return strings.ToLower(a) == strings.ToLower(b)
-	}
-
 	item, err := op.client.GetItemByTitle(title, op.vault)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get item for title %q in vault %q", title, op.vault)
 	}
 
+	eq := func(a, b string) bool {
+		return strings.ToLower(a) == strings.ToLower(b)
+	}
+
+	sectionLabel := func(section *onepassword.ItemSection) string {
+		if section == nil {
+			return ""
+		}
+		return item.SectionLabelForID(section.ID)
+	}
+
 	for _, f := range item.Fields {
-		if eq(f.Label, field) && eq(item.SectionLabelForID(f.Section.ID), section) {
+		if eq(f.Label, field) && eq(sectionLabel(f.Section), section) {
 			return f.Value, nil
 		}
 	}

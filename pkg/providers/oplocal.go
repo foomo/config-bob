@@ -86,16 +86,26 @@ func (o OnePasswordLocal) GetSecret(path string) (value string, err error) {
 		return "", err
 	}
 
+	itemUUID := o.getItemUUID(title)
+
 	cmd := exec.Command("op", "get",
-		"item", title,
+		"--cache",
+		"item", itemUUID,
 		"--fields", field,
+		"--vault", o.vault,
 	)
 	outBytes, err := cmd.Output()
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get password at path %q", path)
 	}
+
 	return string(outBytes), nil
 
+}
+
+//TODO: Optimize speed by mapping titles to UUIDs for faster lookup
+func (o OnePasswordLocal) getItemUUID(title string) string {
+	return title
 }
 
 func onePasswordCLIAuth(account string) (token string, err error) {

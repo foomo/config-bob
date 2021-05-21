@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -17,22 +18,21 @@ type SecretProvider interface {
 }
 
 type SecretProviderManager struct {
+	cache     *Cache
 	providers map[string]SecretProvider
 	lock      sync.RWMutex
 }
 
 func NewSecretProviderManager() SecretProviderManager {
 	return SecretProviderManager{
+		cache:     NewCache(),
 		providers: map[string]SecretProvider{},
 		lock:      sync.RWMutex{},
 	}
 }
 
 func NewSecretProviderManagerFromEnv(l *zap.Logger) (SecretProviderManager, error) {
-	manager := SecretProviderManager{
-		providers: map[string]SecretProvider{},
-		lock:      sync.RWMutex{},
-	}
+	manager := NewSecretProviderManager()
 
 	if IsOnePasswordConnectConfigured() {
 		l.Info("Found 1Password connect configuration from env")
@@ -65,7 +65,7 @@ func (stp *SecretProviderManager) Register(tag string, provider SecretProvider) 
 	stp.lock.Lock()
 	defer stp.lock.Unlock()
 	if _, ok := stp.providers[tag]; ok {
-		return errors.Errorf("secret provider with tag %q already exists", stp)
+		return errors.Errorf("secret provider with tag %q already exists", tag)
 	}
 
 	stp.providers[tag] = provider
@@ -97,10 +97,23 @@ func (stp *SecretProviderManager) GetSecret(params ...string) (value string, err
 		return "", errors.Errorf("invalid number of arguments, required 1 or 2, but got %d", len(params))
 	}
 
+	// Check if the value is cached
+	if value, ok := stp.cache.Get(provider, path); ok {
+		return value, nil
+	}
+
 	secretProvider, ok := stp.providers[provider]
 	if !ok {
 		return "", errors.Errorf("provider %q was not registered, and does not exist", provider)
 	}
 
-	return secretProvider.GetSecret(path)
+	secret, err := secretProvider.GetSecret(path)
+	if err != nil {
+		return "", err
+	}
+	value = strings.Trim(secret, " \n")
+	// Cache for speedup
+	stp.cache.Set(provider, path, value)
+
+	return value, nil
 }

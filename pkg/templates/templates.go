@@ -25,6 +25,7 @@ var DefaultTemplateFunctions = template.FuncMap{
 	"replace":    replace,
 	"absPath":    filepath.Abs,
 	"join":       join,
+	"contains":   contains,
 }
 
 func substr(str string, ranger string) (v string, err error) {
@@ -129,6 +130,24 @@ func join(value interface{}, separator string) (string, error) {
 		return strings.Join(data, separator), nil
 	default:
 		return "", fmt.Errorf("function only supports slice, not %q", reflect.TypeOf(value).String())
+	}
+}
+
+func contains(slice interface{}, value string) (bool, error) {
+	switch reflect.ValueOf(slice).Kind() {
+	case reflect.Slice, reflect.Ptr:
+		values := reflect.Indirect(reflect.ValueOf(slice))
+
+		for i := 0; i < values.Len(); i++ {
+			v := values.Index(i).Interface()
+			if fmt.Sprint(v) == value {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	default:
+		return false, fmt.Errorf("function only supports slice, not %q", reflect.TypeOf(slice).String())
 	}
 }
 
