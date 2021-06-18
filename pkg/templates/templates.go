@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,17 +16,22 @@ import (
 )
 
 var DefaultTemplateFunctions = template.FuncMap{
-	"substr":     substr,
-	"env":        env,
-	"indent":     indent,
-	"yaml":       toYaml,
-	"jsescape":   jsEscape,
-	"json":       toJson,
-	"jsonindent": jsonIndent,
-	"replace":    replace,
-	"absPath":    filepath.Abs,
-	"join":       join,
-	"contains":   contains,
+	"substr":       substr,
+	"env":          env,
+	"indent":       indent,
+	"yaml":         toYaml,
+	"jsescape":     jsEscape,
+	"json":         toJson,
+	"jsonindent":   jsonIndent,
+	"replace":      replace,
+	"absPath":      filepath.Abs,
+	"join":         join,
+	"contains":     contains,
+	"base64encode": base64encode,
+}
+
+func base64encode(data string) (string, error) {
+	return base64.StdEncoding.EncodeToString([]byte(data)), nil
 }
 
 func substr(str string, ranger string) (v string, err error) {
