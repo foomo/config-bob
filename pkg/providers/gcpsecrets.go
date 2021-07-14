@@ -28,11 +28,11 @@ func NewGoogleSecretsProviderFromEnv() (GoogleSecrets, error) {
 	return NewGoogleSecretsProvider(credentials, project)
 }
 
-func NewGoogleSecretsProvider(credentials, project string) (GoogleSecrets, error) {
+func NewGoogleSecretsProvider(credentialsFilePath, project string) (GoogleSecrets, error) {
 	ctx := context.Background()
 
 	client, err := secretmanager.NewClient(ctx,
-		option.WithCredentialsFile(credentials),
+		option.WithCredentialsFile(credentialsFilePath),
 	)
 	if err != nil {
 		return GoogleSecrets{}, err
