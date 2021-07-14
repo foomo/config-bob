@@ -38,17 +38,6 @@ configurations:
 {{ json (secret "secret/path/to/secret.prop") }}
 ```
 
-Data in this example
-
-```go
-data := map[string]interface{}{
-"hello": "test",
-"nested": map[string]string{
-"foo": "bar",
-},
-}
-```
-
 ```
 // template dump some yaml into a file
 {{ yaml . }}
@@ -146,17 +135,6 @@ has a little helper for you.
 ```bash
 config-bob vault-local path/to/vault-folder
 ```
-
-## Integration with 1Password
-
-We have added a template helper to get fields from 1Password
-
-```yaml
-secret-from-1password: { { op "name-uuid-or-url-of-entry" "field-name" } }
-```
-
-In order to make this work follow this
-document [https://support.1password.com/command-line-getting-started/](https://support.1password.com/command-line-getting-started/)
 
 ## Requirements
 
