@@ -58,6 +58,18 @@ func NewSecretProviderManagerFromEnv(l *zap.Logger) (SecretProviderManager, erro
 		}
 	}
 
+	if IsGoogleSecretsConfigured() {
+		l.Info("Found GoogleSecrets configuration from env")
+		provider, err := NewGoogleSecretsProviderFromEnv()
+		if err != nil {
+			return SecretProviderManager{}, err
+		}
+		err = manager.Register("gs", provider)
+		if err != nil {
+			return SecretProviderManager{}, err
+		}
+	}
+
 	return manager, nil
 }
 
