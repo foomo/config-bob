@@ -105,14 +105,13 @@ func Write(outputPath string, result Result) error {
 	return nil
 }
 
-func readData(files []string) (interface{}, error) {
+func readData(files []string) (map[string]interface{}, error) {
 	if len(files) == 0 {
 		return nil, nil
 	}
 	data := make(map[string]interface{})
 
 	for _, file := range files {
-		fileData := make(map[string]interface{})
 
 		dataBytes, err := os.ReadFile(file)
 		if err != nil {
@@ -129,6 +128,7 @@ func readData(files []string) (interface{}, error) {
 			return nil, errors.New("unsupported data file format i need .json, .yml or .yaml")
 		}
 
+		fileData := make(map[string]interface{})
 		err = unmarshal(dataBytes, &fileData)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to unmarshal data from file %q", file)
@@ -141,7 +141,7 @@ func readData(files []string) (interface{}, error) {
 	return data, nil
 }
 
-func processFolder(folderPath string, data interface{}, templateFuncMap template.FuncMap) (result Result, err error) {
+func processFolder(folderPath string, data map[string]interface{}, templateFuncMap template.FuncMap) (result Result, err error) {
 	folderPath = path.Clean(folderPath)
 	ignore := getIgnore(folderPath)
 	if len(ignore) > 2 {

@@ -121,6 +121,8 @@ func onePasswordCLIAuth(account string) (token string, err error) {
 	if err != nil {
 		return "", err
 	}
+	defer stdin.Close()
+
 	go func() {
 		_, err := stdin.Write(append(password, '\n'))
 		if err != nil {
