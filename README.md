@@ -2,13 +2,22 @@
 
 # Bob renders config hierarchies
 
-Bob helps you to render directory trees of configurations using [golangs templating engine](http://golang.org/pkg/text/template). He renders recursively over an arbitrary number of directory hierarchies executing all files as templates.
+Bob helps you to render directory trees of configurations
+using [golangs templating engine](http://golang.org/pkg/text/template). He renders recursively over an arbitrary number
+of directory hierarchies executing all files as templates.
 
 The result will be written into one target directory.
 
 ## Motivation / why config Bob
 
 We needed a simple tool to populate our app configurations with data and **secrets** to run in docker environments.
+
+## Supported Providers
+
+- [Hashicorp Vault](https://www.vaultproject.io/)
+- [OnePassword CLI](/docs/one-password-local.md)
+- [OnePassword Connect](https://support.1password.com/connect-api-reference/)
+- [GCP Secrets](/docs/gcp-secrets.md)
 
 ## Building
 
@@ -18,7 +27,8 @@ config-bob build -v path/to/data.json -t path/to/src/dir/a -t path/to/src/dir/b 
 
 ### Bobs template helpers
 
-Apart from standard template functions we have added a few extra ones, which should come in handy, when writing configurations:
+Apart from standard template functions we have added a few extra ones, which should come in handy, when writing
+configurations:
 
 ```
 // secrets helpers
@@ -26,17 +36,6 @@ Apart from standard template functions we have added a few extra ones, which sho
 
 // combining secrets with escaping might come in handy
 {{ json (secret "secret/path/to/secret.prop") }}
-```
-
-Data in this example
-
-```go
-data := map[string]interface{}{
-    "hello": "test",
-    "nested": map[string]string{
-        "foo": "bar",
-    },
-}
 ```
 
 ```
@@ -123,27 +122,19 @@ vault write secret/foo user=foo password=secret
 
 ## Intergration with [vault](https://vaultproject.io/)
 
-When using the secret templating syntax metioned above Bob will be looking up those secrets in a vault server using vault http interface v1.
+When using the secret templating syntax metioned above Bob will be looking up those secrets in a vault server using
+vault http interface v1.
 
 Bob expects the environment variables `VAULT_ADDR` and `VAULT_TOKEN` to be set to know to which vault server to talk to.
 
 ### Running a local vault with Bobs help
 
-If you want to keep your secrets under version control and you do not want to run a vault server permanently config-bob has a little helper for you.
+If you want to keep your secrets under version control and you do not want to run a vault server permanently config-bob
+has a little helper for you.
 
 ```bash
 config-bob vault-local path/to/vault-folder
 ```
-
-## Integration with 1Password
-
-We have added a template helper to get fields from 1Password
-
-```yaml
-secret-from-1password: {{ op "name-uuid-or-url-of-entry" "field-name" }}
-```
-
-In order to make this work follow this document [https://support.1password.com/command-line-getting-started/](https://support.1password.com/command-line-getting-started/)
 
 ## Requirements
 
