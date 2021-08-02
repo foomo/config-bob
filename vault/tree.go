@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // Tree a tree of secrets
@@ -30,7 +32,8 @@ func tree(path string) (map[string]map[string]string, error) {
 	cmd := exec.Command("vault", "list", "-format", "json", path)
 	jsonBytes, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, vaultErr(jsonBytes, err)
+		err := vaultErr(jsonBytes, err)
+		return nil, errors.Wrapf(err, "failed to read path %q", path)
 	}
 	var paths []string
 	if string(jsonBytes) == "No entries found\n" {
@@ -39,7 +42,7 @@ func tree(path string) (map[string]map[string]string, error) {
 	}
 	err = json.Unmarshal(jsonBytes, &paths)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to unmarshal data at %q", path)
 	}
 
 	vaultData := map[string]map[string]string{}
@@ -63,7 +66,7 @@ func tree(path string) (map[string]map[string]string, error) {
 			}
 			vaultData[current] = map[string]string{}
 			for key, value := range data {
-				vaultData[current][key] = value
+				vaultData[current][key] = fmt.Sprint(value)
 			}
 		}
 

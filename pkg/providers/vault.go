@@ -31,5 +31,5 @@ func (v *Vault) GetSecret(path string) (value string, err error) {
 	if !ok {
 		return "", fmt.Errorf("property %q is not set for secret %q %q", prop, parts[0], secretData)
 	}
-	return s, nil
+	return fmt.Sprint(s), nil
 }

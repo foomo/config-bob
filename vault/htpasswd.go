@@ -47,7 +47,7 @@ func writeHtpasswdFiles(config HtpasswdConfig, hashAlgorithm htpasswd.HashAlgori
 				return fmt.Errorf("secret from path %q is missing key password", passwordVaultPath)
 			}
 			fmt.Println("	", passwordVaultPath, ":", user)
-			err = htpasswd.SetPassword(passwordFile, user, password, hashAlgorithm)
+			err = htpasswd.SetPassword(passwordFile, fmt.Sprint(user), fmt.Sprint(password), hashAlgorithm)
 			if err != nil {
 				return fmt.Errorf("could not set password for %q in file %q got error %q", user, passwordFile, err)
 			}

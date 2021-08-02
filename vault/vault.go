@@ -13,7 +13,7 @@ import (
 const vaultAddr = "127.0.0.1:8200"
 
 type readResponse struct {
-	Data map[string]string
+	Data map[string]interface{}
 }
 
 type Version struct {
@@ -96,9 +96,9 @@ func vaultErr(combinedOutput []byte, err error) error {
 var Dummy = false
 
 // Read data from a vault - env vars need to be set
-func Read(path string) (secret map[string]string, err error) {
+func Read(path string) (secret map[string]interface{}, err error) {
 	if Dummy {
-		return map[string]string{
+		return map[string]interface{}{
 			"token":    "well-a-token",
 			"name":     "call my name",
 			"user":     "user-from" + path,
