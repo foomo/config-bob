@@ -2,9 +2,9 @@
 # Build customization
 builds:
   - binary: config-bob
-    main:   config-bob.go
+    main:   main.go
     env:
-        - CGO_ENABLED=0
+      - CGO_ENABLED=0
     goos:
       - windows
       - darwin
