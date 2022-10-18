@@ -11,6 +11,8 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm
+      - arm64
 
 # .goreleaser.yml
 archives:
@@ -21,7 +23,7 @@ archives:
 
 brews:
   # Reporitory to push the tap to.
-  - github:
+  - tap:
       owner: foomo
       name: homebrew-config-bob
 
