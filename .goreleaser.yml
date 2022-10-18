@@ -21,6 +21,7 @@ archives:
       - goos: windows
         format: zip
 
+# Publish to homebrew
 brews:
   # Reporitory to push the tap to.
   - tap:
