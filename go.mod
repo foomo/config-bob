@@ -12,7 +12,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/zap v1.16.0
-	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
+	golang.org/x/crypto v0.1.0
 	google.golang.org/api v0.50.0
 	google.golang.org/genproto v0.0.0-20210714021259-044028024a4f
 	gopkg.in/yaml.v2 v2.4.0
