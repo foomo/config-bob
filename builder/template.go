@@ -9,10 +9,18 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
+	"golang.org/x/sync/singleflight"
 	"gopkg.in/yaml.v2"
 
 	"text/template"
+)
+
+var (
+	secretCacheSF   = singleflight.Group{}
+	secretCacheLock = &sync.RWMutex{}
+	secretCache     = map[string]string{}
 )
 
 // TemplateFuncs knock yourself out - this is what builder user for templating
@@ -98,12 +106,28 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return string(rawJSON), nil
 	},
-	"secret": func(key string) (v string, err error) {
-		v, err = rawSecret(key)
-		if err != nil {
-			return key, err
+	"secret": func(key string) (string, error) {
+		secretCacheLock.RLock()
+		if value, ok := secretCache[key]; ok {
+			secretCacheLock.RUnlock()
+			return value, nil
 		}
-		return v, nil
+		secretCacheLock.RUnlock()
+		value, err, _ := secretCacheSF.Do(key, func() (interface{}, error) {
+			value, err := rawSecret(key)
+			if err != nil {
+				return nil, err
+			}
+			secretCacheLock.Lock()
+			secretCache[key] = value
+			secretCacheLock.Unlock()
+			return value, nil
+		})
+		if err != nil {
+			return "", err
+		}
+
+		return value.(string), nil
 	},
 	"replace": replace,
 	"op":      onePassword,

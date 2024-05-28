@@ -11,6 +11,7 @@ import (
 	"text/template"
 
 	"github.com/foomo/config-bob/vault"
+	"golang.org/x/sync/errgroup"
 )
 
 type fileResult struct {
@@ -66,6 +67,8 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 	if err != nil {
 		return nil, err
 	}
+
+	g := errgroup.Group{}
 	for _, file := range files {
 		run := true
 
@@ -75,12 +78,17 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 				break
 			}
 		}
-		p.Files[file], err = processFile(path.Join(folderPath, file), data, run)
-		if err != nil {
-			return p, err
-		}
+		g.Go(func() error {
+			file := file
+			p.Files[file], err = processFile(path.Join(folderPath, file), data, run)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
-	return p, nil
+
+	return p, g.Wait()
 }
 
 func rawSecret(key string) (v string, err error) {
