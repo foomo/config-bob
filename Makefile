@@ -17,3 +17,5 @@ build-arch: prepare
 release:
 	goreleaser release --clean
 
+release.dry-run:
+	goreleaser release --clean --snapshot

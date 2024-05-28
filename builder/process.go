@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/foomo/config-bob/vault"
@@ -67,6 +68,7 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 	if err != nil {
 		return nil, err
 	}
+	lock := &sync.Mutex{}
 
 	g := errgroup.Group{}
 	for _, file := range files {
@@ -80,10 +82,14 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 		}
 		g.Go(func() error {
 			file := file
-			p.Files[file], err = processFile(path.Join(folderPath, file), data, run)
+			result, err := processFile(path.Join(folderPath, file), data, run)
 			if err != nil {
 				return err
 			}
+
+			lock.Lock()
+			p.Files[file] = result
+			lock.Unlock()
 			return nil
 		})
 	}
