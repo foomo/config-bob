@@ -15,5 +15,5 @@ build-arch: prepare
 	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o bin/config-bob-darwin-amd64_$(TAG) config-bob.go
 
 release:
-	goreleaser --clean
+	goreleaser release --clean
 
