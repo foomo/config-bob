@@ -31,7 +31,7 @@ Apart from standard template functions we have added a few extra ones, which sho
 Data in this example
 
 ```go
-data := map[string]interface{}{
+data := map[string]any{
     "hello": "test",
     "nested": map[string]string{
         "foo": "bar",

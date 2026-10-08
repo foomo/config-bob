@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"maps"
 	"os"
 	"path"
+	"slices"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/foomo/config-bob/vault"
@@ -31,21 +33,14 @@ func (p *ProcessingResult) Merge(otherResult *ProcessingResult) {
 			p.Folders = append(p.Folders, newFolder)
 		}
 	}
-	for filePath, fileBytes := range otherResult.Files {
-		p.Files[filePath] = fileBytes
-	}
+	maps.Copy(p.Files, otherResult.Files)
 }
 
 func (p *ProcessingResult) ContainsFolder(someFolder string) bool {
-	for _, f := range p.Folders {
-		if someFolder == f {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.Folders, someFolder)
 }
 
-func processFolder(folderPath string, data interface{}) (result *ProcessingResult, err error) {
+func processFolder(folderPath string, data any) (result *ProcessingResult, err error) {
 	folderPath = path.Clean(folderPath)
 	ignore := getIgnore(folderPath)
 	if len(ignore) > 2 {
@@ -68,27 +63,39 @@ func processFolder(folderPath string, data interface{}) (result *ProcessingResul
 		return nil, err
 	}
 
-	g := errgroup.Group{}
+	var (
+		g  errgroup.Group
+		mu sync.Mutex
+	)
 	for _, file := range files {
-		run := true
-
-		for _, copyFile := range copiedFiles {
-			if strings.HasPrefix(file, copyFile) || file == copyFile {
-				run = false
-				break
-			}
-		}
+		run := !isCopied(file, copiedFiles)
 		g.Go(func() error {
-			file := file
-			p.Files[file], err = processFile(path.Join(folderPath, file), data, run)
+			fr, err := processFile(path.Join(folderPath, file), data, run)
 			if err != nil {
 				return err
 			}
+			mu.Lock()
+			p.Files[fr.filename] = fr
+			mu.Unlock()
 			return nil
 		})
 	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
 
-	return p, g.Wait()
+// isCopied reports whether file is listed in .bobcopy, either directly or
+// by one of its parent folders
+func isCopied(file string, copiedFiles []string) bool {
+	for _, copyFile := range copiedFiles {
+		copyFile = strings.TrimSuffix(copyFile, "/")
+		if file == copyFile || strings.HasPrefix(file, copyFile+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func rawSecret(key string) (v string, err error) {
@@ -110,19 +117,18 @@ func rawSecret(key string) (v string, err error) {
 	return v, errors.New(v)
 }
 
-func processFile(filename string, data interface{}, run bool) (result *fileResult, err error) {
-	fileContents, err := ioutil.ReadFile(filename)
+func processFile(filename string, data any, run bool) (result *fileResult, err error) {
+	fileContents, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	var byteData []byte
 	if run {
 		fmt.Println("processing :", filename)
-		processedBytes, err := process(filename, string(fileContents), data)
+		byteData, err = process(filename, string(fileContents), data)
 		if err != nil {
 			return nil, err
 		}
-		byteData = processedBytes
 	} else {
 		fmt.Println("copying    :", filename)
 		byteData = fileContents
@@ -137,15 +143,14 @@ func processFile(filename string, data interface{}, run bool) (result *fileResul
 		bytes:    byteData,
 		info:     info,
 	}, nil
-
 }
 
-func process(templName, templ string, data interface{}) (result []byte, err error) {
+func process(templName, templ string, data any) ([]byte, error) {
 	t, err := template.New(templName).Option("missingkey=error").Funcs(TemplateFuncs).Parse(templ)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("template parsing failed: %w", err)
 	}
-	out := bytes.NewBuffer([]byte{})
-	err = t.Execute(out, data)
+	var out bytes.Buffer
+	err = t.Execute(&out, data)
 	return out.Bytes(), err
 }

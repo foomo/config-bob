@@ -10,11 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 
 	"golang.org/x/sync/singleflight"
 	"gopkg.in/yaml.v2"
-
-	"text/template"
 )
 
 var (
@@ -26,7 +25,6 @@ var (
 // TemplateFuncs knock yourself out - this is what builder user for templating
 var TemplateFuncs = template.FuncMap{
 	"substr": func(str string, ranger string) (v string, err error) {
-
 		rangeParts := strings.Split(ranger, ":")
 		if len(rangeParts) != 2 {
 			return str, fmt.Errorf("can not parse %q", ranger)
@@ -61,7 +59,7 @@ var TemplateFuncs = template.FuncMap{
 
 		max := len(str)
 		if end > max {
-			return str, fmt.Errorf("end out of range %q length is %q", ranger, max)
+			return str, fmt.Errorf("end out of range %q length is %d", ranger, max)
 		}
 
 		substring := str[start:end]
@@ -82,7 +80,7 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return strings.Join(indented, "\n"), nil
 	},
-	"yaml": func(value interface{}) (v string, err error) {
+	"yaml": func(value any) (v string, err error) {
 		yamlBytes, err := yaml.Marshal(value)
 		if err != nil {
 			return fmt.Sprintf("%q", value), err
@@ -92,14 +90,14 @@ var TemplateFuncs = template.FuncMap{
 	"jsescape": func(value string) (v string, err error) {
 		return template.JSEscapeString(value), nil
 	},
-	"json": func(value interface{}) (v string, err error) {
+	"json": func(value any) (v string, err error) {
 		rawJSON, jsonErr := json.Marshal(value)
 		if jsonErr != nil {
 			return fmt.Sprintf("%q", value), jsonErr
 		}
 		return string(rawJSON), nil
 	},
-	"jsonindent": func(value interface{}, prefix string, indent string) (v string, err error) {
+	"jsonindent": func(value any, prefix string, indent string) (v string, err error) {
 		rawJSON, jsonErr := json.MarshalIndent(value, prefix, indent)
 		if jsonErr != nil {
 			return fmt.Sprintf("%q", value), jsonErr
@@ -113,7 +111,7 @@ var TemplateFuncs = template.FuncMap{
 			return value, nil
 		}
 		secretCacheLock.RUnlock()
-		value, err, _ := secretCacheSF.Do(key, func() (interface{}, error) {
+		value, err, _ := secretCacheSF.Do(key, func() (any, error) {
 			value, err := rawSecret(key)
 			if err != nil {
 				return nil, err
@@ -135,10 +133,9 @@ var TemplateFuncs = template.FuncMap{
 	"join":    join,
 }
 
-func join(value interface{}, separator string) (string, error) {
-
+func join(value any, separator string) (string, error) {
 	switch reflect.ValueOf(value).Kind() {
-	case reflect.Slice, reflect.Ptr:
+	case reflect.Slice, reflect.Pointer:
 		values := reflect.Indirect(reflect.ValueOf(value))
 
 		var data []string
@@ -154,6 +151,6 @@ func join(value interface{}, separator string) (string, error) {
 	}
 }
 
-func replace(search string, replace string, value interface{}) (v string, err error) {
+func replace(search string, replace string, value any) (v string, err error) {
 	return strings.Replace(value.(string), search, replace, -1), nil
 }

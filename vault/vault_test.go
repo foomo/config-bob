@@ -2,28 +2,22 @@ package vault
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
 	"testing"
 
 	"github.com/foomo/htpasswd"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
-func poe(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func TestHtpasswd(t *testing.T) {
 	Dummy = true
-	testDir, err := ioutil.TempDir(os.TempDir(), "htpasswd-config-test-dir-")
-	poe(err)
-	testConfigFile, err := ioutil.TempFile(os.TempDir(), "htpasswd-config")
-	poe(err)
+	testDir, err := os.MkdirTemp(os.TempDir(), "htpasswd-config-test-dir-")
+	require.NoError(t, err)
+	testConfigFile, err := os.CreateTemp(os.TempDir(), "htpasswd-config")
+	require.NoError(t, err)
 
 	cnf := map[string][]string{
 		testDir + "/foo/test/bar": {
@@ -35,18 +29,17 @@ func TestHtpasswd(t *testing.T) {
 		},
 	}
 	configBytes, err := yaml.Marshal(cnf)
-	poe(err)
-	poe(ioutil.WriteFile(testConfigFile.Name(), configBytes, 0600))
-	poe(WriteHtpasswdFiles(testConfigFile.Name(), htpasswd.HashBCrypt))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(testConfigFile.Name(), configBytes, 0o600))
+	require.NoError(t, WriteHtpasswdFiles(testConfigFile.Name(), htpasswd.HashBCrypt))
 
 	for htpasswdFile, secretPaths := range cnf {
 		passwords, err := htpasswd.ParseHtpasswdFile(htpasswdFile)
-		//poe(err)
+		require.NoError(t, err)
 		if len(passwords) != len(secretPaths) {
 			t.Fatal("wrong number of passwords in", htpasswdFile, passwords, err)
 		}
 	}
-
 }
 
 func TestVaultVersion(t *testing.T) {

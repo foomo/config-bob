@@ -4,18 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
+	"github.com/samber/lo"
 	"gopkg.in/yaml.v2"
 )
 
-// Build
-func Build(args *Args) (result *ProcessingResult, err error) {
+func Build(args *Args) (*ProcessingResult, error) {
 	fmt.Println(line)
 	fmt.Println("building")
 	fmt.Println("data files     :", strings.Join(args.DataFiles, ", "))
@@ -47,7 +48,7 @@ func Build(args *Args) (result *ProcessingResult, err error) {
 		return nil, nil
 	}
 
-	result = results[0]
+	result := results[0]
 	if len(results) > 1 {
 		for _, r := range results[1:] {
 			result.Merge(r)
@@ -63,16 +64,17 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	fmt.Println(line)
 	fmt.Println("building folder structure:")
 	fmt.Println(line)
-	err := os.MkdirAll(targetFolder, 0744)
+	err := os.MkdirAll(targetFolder, 0o744)
 	if err != nil {
 		return errors.New("could not create target folder")
 	}
 	i := 0
+	sort.Strings(result.Folders)
 	for _, folder := range result.Folders {
 		i++
 		folder = path.Join(targetFolder, folder)
 		fmt.Println(i, folder)
-		err := os.MkdirAll(folder, 0744)
+		err := os.MkdirAll(folder, 0o744)
 		if err != nil {
 			return err
 		}
@@ -81,11 +83,15 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	fmt.Println("writing files:")
 	fmt.Println(line)
 	i = 0
-	for file, processingResult := range result.Files {
+	keys := lo.Keys(result.Files)
+	sort.Strings(keys)
+
+	for _, file := range keys {
+		processingResult := result.Files[file]
 		i++
 		file = path.Join(targetFolder, file)
 		fmt.Println(processingResult.info.Mode().Perm(), i, file)
-		err := ioutil.WriteFile(file, processingResult.bytes, processingResult.info.Mode().Perm())
+		err := os.WriteFile(file, processingResult.bytes, processingResult.info.Mode().Perm())
 		if err != nil {
 			return err
 		}
@@ -93,16 +99,16 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	return nil
 }
 
-func readData(files []string) (interface{}, error) {
+func readData(files []string) (any, error) {
 	if len(files) == 0 {
 		return nil, nil
 	}
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 
 	for _, file := range files {
-		fileData := make(map[string]interface{})
+		fileData := make(map[string]any)
 
-		dataBytes, err := ioutil.ReadFile(file)
+		dataBytes, err := os.ReadFile(file)
 		if err != nil {
 			return nil, errors.New("could not read data file: " + err.Error())
 		}
@@ -114,9 +120,7 @@ func readData(files []string) (interface{}, error) {
 			return nil, errors.New("unsupported data file format i need .json, .yml or .yaml")
 		}
 
-		for k, v := range fileData {
-			data[k] = v
-		}
+		maps.Copy(data, fileData)
 	}
 	return data, nil
 }
@@ -128,10 +132,10 @@ func getCopy(root string) (copy []string) {
 func getStuff(root, name string) []string {
 	var stuff []string
 	stuffFile := path.Join(root, name)
-	stuffBytes, err := ioutil.ReadFile(stuffFile)
+	stuffBytes, err := os.ReadFile(stuffFile)
 	if err == nil {
-		lines := strings.Split(string(stuffBytes), "\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(string(stuffBytes), "\n")
+		for line := range lines {
 			trimmedLine := strings.TrimSpace(line)
 			if len(trimmedLine) > 0 {
 				stuff = append(stuff, trimmedLine)
@@ -149,12 +153,7 @@ func getIgnore(root string) (ignore []string) {
 func fileIsIgnored(root string, p string, ignore []string) bool {
 	prefix := root + string(os.PathSeparator)
 	trimmedPath := strings.TrimPrefix(p, prefix)
-	for _, ignored := range ignore {
-		if trimmedPath == ignored {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ignore, trimmedPath)
 }
 
 func getFiles(root string, ignore []string) (files []string, err error) {
@@ -165,6 +164,7 @@ func getFiles(root string, ignore []string) (files []string, err error) {
 		}
 		return !tartgetInfo.IsDir()
 	})
+	sort.Strings(files)
 	return
 }
 

@@ -1,9 +1,8 @@
 package config
 
 import (
-	"os"
-	"io/ioutil"
 	"encoding/json"
+	"os"
 	"path/filepath"
 )
 
@@ -26,7 +25,7 @@ func (ls *localStore) load() error {
 		return nil
 	}
 
-	data, err := ioutil.ReadFile(ls.path)
+	data, err := os.ReadFile(ls.path)
 	if err != nil {
 		return err
 	}
@@ -42,13 +41,13 @@ func (ls *localStore) load() error {
 }
 
 func (ls *localStore) save() error {
-	os.MkdirAll(filepath.Dir(ls.path), 0700)
+	os.MkdirAll(filepath.Dir(ls.path), 0o700)
 	data, err := json.Marshal(ls.credentials)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(ls.path, data, 0600)
+	return os.WriteFile(ls.path, data, 0o600)
 }
 
 // Stores the credentials for the vault in the specified location

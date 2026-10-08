@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/bgentry/speakeasy"
@@ -11,8 +13,6 @@ import (
 	"github.com/foomo/config-bob/config"
 	"github.com/foomo/config-bob/vault"
 	"github.com/foomo/htpasswd"
-	"log"
-	"path/filepath"
 )
 
 // Version constant specifies the current version of the script
@@ -153,7 +153,7 @@ func vaultLocalCommand() {
 				fmt.Println("could not unseal vault", err, string(out))
 			} else {
 				fmt.Println(string(out))
-				//STORE VALID CREDENTIALS FOR VAULT
+				// STORE VALID CREDENTIALS FOR VAULT
 				fmt.Println("VAULT-STORE: Persisting valid token/key values for vault")
 				if useVaultKeyStore {
 					storeErr := vaultKeyStore.Store(config.VaultCredentials{
@@ -294,16 +294,15 @@ func buildCommand() {
 			fmt.Println("a build error has occurred:", err.Error())
 			os.Exit(1)
 		}
-		writeError := builder.WriteProcessingResult(builderArgs.TargetFolder, result)
-		if writeError != nil {
-			fmt.Println("could not write processing result to fs:", writeError.Error())
+
+		if err := builder.WriteProcessingResult(builderArgs.TargetFolder, result); err != nil {
+			fmt.Println("could not write processing result to fs:", err.Error())
 			os.Exit(1)
 		}
 	}
 }
 
 func main() {
-
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case commandVersion:
