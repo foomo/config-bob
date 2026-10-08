@@ -1,14 +1,14 @@
 package config
 
 import (
-	"testing"
-	"io/ioutil"
 	"os"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_LocalStore_Operations(t *testing.T) {
-	file, err := ioutil.TempFile(os.TempDir(), "vault-store")
+	file, err := os.CreateTemp(os.TempDir(), "vault-store")
 	assert.NoError(t, err)
 	os.Remove(file.Name())
 	defer os.Remove(file.Name())
@@ -31,7 +31,7 @@ func Test_LocalStore_Operations(t *testing.T) {
 }
 
 func Test_LocalStore_Recovery(t *testing.T) {
-	file, err := ioutil.TempFile(os.TempDir(), "vault-store")
+	file, err := os.CreateTemp(os.TempDir(), "vault-store")
 	assert.NoError(t, err)
 	os.Remove(file.Name())
 	defer os.Remove(file.Name())

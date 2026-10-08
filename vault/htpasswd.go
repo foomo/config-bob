@@ -3,7 +3,6 @@ package vault
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -28,7 +27,7 @@ func writeHtpasswdFiles(config HtpasswdConfig, hashAlgorithm htpasswd.HashAlgori
 	for passwordFile, passwords := range config {
 		// make sure that directories are there
 		p := path.Dir(passwordFile)
-		err = os.MkdirAll(p, 0777)
+		err = os.MkdirAll(p, 0o777)
 		if err != nil {
 			return errors.New("could not create path: " + p + " for file: " + passwordFile)
 		}
@@ -58,7 +57,7 @@ func writeHtpasswdFiles(config HtpasswdConfig, hashAlgorithm htpasswd.HashAlgori
 
 // ReadHtpasswdConfigFromFile read htpasswd config from a file
 func ReadHtpasswdConfigFromFile(filename string) (config HtpasswdConfig, err error) {
-	configBytes, err := ioutil.ReadFile(filename)
+	configBytes, err := os.ReadFile(filename)
 	if err != nil {
 		return
 	}

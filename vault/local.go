@@ -3,7 +3,6 @@ package vault
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -59,7 +58,7 @@ func LocalSetEnv() {
 
 func LocalSetup(folder string) error {
 	l := localGetLayout(folder)
-	err := os.MkdirAll(l.folders.db, 0744)
+	err := os.MkdirAll(l.folders.db, 0o744)
 	if err != nil {
 		return err
 	}
@@ -74,7 +73,7 @@ func LocalSetup(folder string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(l.files.conf, out.Bytes(), 0644)
+	return os.WriteFile(l.files.conf, out.Bytes(), 0o644)
 }
 
 func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error) {

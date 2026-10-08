@@ -2,25 +2,19 @@ package builder
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/foomo/config-bob/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func getCurrentDir() string {
 	_, filename, _, _ := runtime.Caller(1)
 	return path.Dir(filename)
-}
-
-func panicOnErr(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 func GetExample(path string) string {
@@ -47,25 +41,75 @@ func TestFilesAndFolders(t *testing.T) {
 	}
 	ignore := getIgnore(exampleA)
 	files, err := getFiles(exampleA, ignore)
-	panicOnErr(err)
+	require.NoError(t, err)
 	match("file list missmatch", files, []string{"config.yml", "httpd/copy.txt", "httpd/ext/foo.conf", "httpd/test.conf"})
 	folders, err := getFolders(exampleA, ignore)
-	panicOnErr(err)
+	require.NoError(t, err)
 	match("folder list missmatch", folders, []string{"httpd", "httpd/ext"})
 }
 
 func TestProcess(t *testing.T) {
 	vault.Dummy = true
 	exampleA := GetExample("source-a")
-	data := make(map[string]interface{})
-	jsonBytes, err := ioutil.ReadFile(GetExample("data.json"))
-	panicOnErr(err)
-	panicOnErr(json.Unmarshal(jsonBytes, &data))
+	data := make(map[string]any)
+	jsonBytes, err := os.ReadFile(GetExample("data.json"))
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(jsonBytes, &data))
 	r, err := processFolder(exampleA, data)
-	if err != nil {
-		panic(err)
+	require.NoError(t, err)
+
+	require.ElementsMatch(t, []string{"httpd", "httpd/ext"}, r.Folders)
+
+	expected := map[string]string{
+		"config.yml": `---
+killer: |2-
+
+  :foo
+  bar
+  jkljkljkljkljkl:]|
+account:
+  name: call my name
+  password: dummy-password
+payment:
+  token: well-a-token
+`,
+		"httpd/test.conf": `<VirtualHost *:80>
+
+	ServerName <test.local>
+	# environment variables
+	SetEnv FOOMO_RUN_MODE "test"
+
+	AddOutputFilterByType DEFLATE text/html text/plain text/xml text/x-js text/css application/javascript application/x-json
+</VirtualHost>
+`,
+		"httpd/ext/foo.conf": "# included above\n",
+		// listed in .bobcopy, so it must not be rendered as a template
+		"httpd/copy.txt": "{{ copy me or you will die}}",
 	}
-	for filename, processingResult := range r.Files {
-		fmt.Println(filename, string(processingResult.bytes))
+
+	require.Len(t, r.Files, len(expected))
+	for name, content := range expected {
+		fileResult, ok := r.Files[filepath.Join(exampleA, name)]
+		require.True(t, ok, "missing file %q", name)
+		require.Equal(t, content, string(fileResult.bytes), "content mismatch for %q", name)
 	}
+}
+
+func TestProcessTemplateError(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ok.txt"), []byte("fine"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "broken.txt"), []byte("{{ .missing }}"), 0o644))
+	_, err := processFolder(dir, map[string]any{})
+	require.Error(t, err)
+}
+
+func TestProcessCopyPrefix(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".bobcopy"), []byte("raw.txt"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "raw.txt"), []byte("{{ .x }}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "raw.txt.tpl"), []byte("{{ .x }}"), 0o644))
+	r, err := processFolder(dir, map[string]any{"x": "rendered"})
+	require.NoError(t, err)
+	require.Equal(t, "{{ .x }}", string(r.Files[filepath.Join(dir, "raw.txt")].bytes))
+	require.Equal(t, "rendered", string(r.Files[filepath.Join(dir, "raw.txt.tpl")].bytes))
 }

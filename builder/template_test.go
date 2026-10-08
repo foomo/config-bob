@@ -7,18 +7,19 @@ import (
 )
 
 func TestMissingError(t *testing.T) {
-	_, err := process("", "{{.foo}}", map[string]interface{}{})
+	_, err := process("", "{{.foo}}", map[string]any{})
 	if err == nil {
 		t.Fatal("missing keys are not an option")
 	}
 }
-func renderTemplate(templ string, data map[string]interface{}) (string, error) {
+
+func renderTemplate(templ string, data map[string]any) (string, error) {
 	result, err := process("", templ, data)
 	return string(result), err
 }
 
 func TestTemplateFuncs(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"hello": "test",
 		"nested": map[string]string{
 			"foo": "bar",
@@ -93,11 +94,10 @@ func TestTemplateFuncs(t *testing.T) {
 
 	assert(`{{ absPath "/foo/bar/../" }}`, "/foo")
 	assert(`{{ absPath "/foo/.." }}`, "/")
-
 }
 
 func TestTemplateReplace(t *testing.T) {
-	data := map[string]interface{}{"data": "test\ntest"}
+	data := map[string]any{"data": "test\ntest"}
 	template := `{{ replace "\n" " " .data}}`
 	content, _ := renderTemplate(template, data)
 	if content != "test test" {
@@ -106,7 +106,7 @@ func TestTemplateReplace(t *testing.T) {
 }
 
 func TestTemplateReplaceChaining(t *testing.T) {
-	data := map[string]interface{}{"data": "a-test-test-a"}
+	data := map[string]any{"data": "a-test-test-a"}
 	template := `{{ substr .data "2:11" | replace "-" " "}}`
 	content, err := renderTemplate(template, data)
 	if err != nil {
@@ -119,7 +119,7 @@ func TestTemplateReplaceChaining(t *testing.T) {
 
 func Test_join(t *testing.T) {
 	type args struct {
-		value     interface{}
+		value     any
 		separator string
 	}
 	tests := []struct {

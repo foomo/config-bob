@@ -46,8 +46,8 @@ func GetUnsealCommand(vaultKey string) (*exec.Cmd, error) {
 	}
 
 	var args []string
-	//https://www.vaultproject.io/guides/upgrading/upgrade-to-0.9.2.html#backwards-compatible-cli-changes
-	//Breaking changes for 0.9.2+ => Operator
+	// https://www.vaultproject.io/guides/upgrading/upgrade-to-0.9.2.html#backwards-compatible-cli-changes
+	// Breaking changes for 0.9.2+ => Operator
 
 	if version.LowerThan(Version{Major: 0, Minor: 9, Release: 2}) {
 		args = []string{"unseal", vaultKey}
@@ -79,7 +79,7 @@ func GetVaultVersionParsed() (version Version, err error) {
 	}
 
 	versionData := make([]int, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		versionData[i], err = strconv.Atoi(val[i+1])
 		if err != nil {
 			return Version{}, err

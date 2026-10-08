@@ -3,6 +3,7 @@ package vault
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os/exec"
 	"strings"
 )
@@ -52,9 +53,7 @@ func tree(path string) (map[string]map[string]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			for key, value := range data {
-				vaultData[key] = value
-			}
+			maps.Copy(vaultData, data)
 
 		} else {
 			data, err := Read(current)
@@ -62,9 +61,7 @@ func tree(path string) (map[string]map[string]string, error) {
 				return nil, err
 			}
 			vaultData[current] = map[string]string{}
-			for key, value := range data {
-				vaultData[current][key] = value
-			}
+			maps.Copy(vaultData[current], data)
 		}
 
 	}
