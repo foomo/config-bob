@@ -132,3 +132,67 @@ func TestWriteProcessingResultPaths(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "name: {{ .name }}", string(src), "the source template must stay untouched")
 }
+
+func TestReadDataRejectsBrokenFile(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "base.yml")
+	broken := filepath.Join(dir, "prod.yml")
+	require.NoError(t, os.WriteFile(base, []byte("host: staging"), 0o644))
+	require.NoError(t, os.WriteFile(broken, []byte("host: [production"), 0o644))
+	_, err := readData([]string{base, broken})
+	require.ErrorContains(t, err, broken)
+}
+
+func TestRawSecretMissingPropHidesValues(t *testing.T) {
+	vault.Dummy = true
+	_, err := rawSecret("secret/db.passwrod")
+	require.ErrorContains(t, err, "password")
+	require.NotContains(t, err.Error(), "dummy-password")
+}
+
+func writeOne(t *testing.T, target, content string, perm os.FileMode) {
+	t.Helper()
+	source := t.TempDir()
+	tpl := filepath.Join(source, "out.conf")
+	require.NoError(t, os.WriteFile(tpl, []byte(content), perm))
+	require.NoError(t, os.Chmod(tpl, perm))
+	r, err := processFolder(source, map[string]any{})
+	require.NoError(t, err)
+	require.NoError(t, WriteProcessingResult(target, r))
+}
+
+func TestWriteProcessingResultEnforcesMode(t *testing.T) {
+	target := t.TempDir()
+	out := filepath.Join(target, "out.conf")
+	require.NoError(t, os.WriteFile(out, []byte("old"), 0o644))
+
+	writeOne(t, target, "secret", 0o600)
+	info, err := os.Stat(out)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+
+	// a read-only template must not block the next build
+	writeOne(t, target, "first", 0o400)
+	writeOne(t, target, "second", 0o400)
+	got, err := os.ReadFile(out)
+	require.NoError(t, err)
+	require.Equal(t, "second", string(got))
+	entries, err := os.ReadDir(target)
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "no temp files may be left behind")
+}
+
+func TestWriteProcessingResultRejectsSymlinkEscape(t *testing.T) {
+	outside := t.TempDir()
+	target := t.TempDir()
+	require.NoError(t, os.Symlink(outside, filepath.Join(target, "values")))
+
+	source := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(source, "values"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(source, "values", "x.conf"), []byte("x"), 0o644))
+	r, err := processFolder(source, map[string]any{})
+	require.NoError(t, err)
+	require.Error(t, WriteProcessingResult(target, r))
+	_, err = os.Stat(filepath.Join(outside, "x.conf"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+}

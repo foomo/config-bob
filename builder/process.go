@@ -110,7 +110,8 @@ func rawSecret(key string) (v string, err error) {
 		prop := parts[1]
 		s, ok := secretData[prop]
 		if !ok {
-			return "<prop not found on secret>", errors.New("property \"" + prop + "\" is not set for secret " + parts[0] + " " + fmt.Sprint(secretData))
+			// list only key names: the values are secrets and this error ends up in build logs
+			return "<prop not found on secret>", fmt.Errorf("property %q is not set for secret %s, available keys: %v", prop, parts[0], slices.Sorted(maps.Keys(secretData)))
 		}
 		return s, nil
 	}
