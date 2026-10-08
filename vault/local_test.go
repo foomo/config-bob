@@ -6,16 +6,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLocalUnseal(t *testing.T) {
 	var gotKey string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPut, r.Method)
-		require.Equal(t, "/v1/sys/unseal", r.URL.Path)
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "/v1/sys/unseal", r.URL.Path)
 		body := map[string]string{}
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		gotKey = body["key"]
 		_, _ = w.Write([]byte(`{"sealed":false,"t":1,"progress":0}`))
 	}))
