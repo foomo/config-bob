@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -105,13 +106,16 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 
 // replaceFile writes a temp file and renames it over name, so existing or read-only outputs get exactly perm
 func replaceFile(root *os.Root, name string, data []byte, perm os.FileMode) error {
-	tmp := name + ".bob-tmp"
-	_ = root.Remove(tmp)
+	tmp := name + ".bob-tmp-" + rand.Text()
 	f, err := root.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
 	if err != nil {
 		return err
 	}
 	_, err = f.Write(data)
+	if err == nil {
+		// OpenFile applies the umask, the template mode is the contract
+		err = f.Chmod(perm)
+	}
 	if closeErr := f.Close(); err == nil {
 		err = closeErr
 	}
