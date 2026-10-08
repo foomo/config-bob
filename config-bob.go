@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -131,7 +130,11 @@ func vaultLocalCommand() {
 		}
 		fmt.Println("vault not running - trying to start it")
 
-		vaultCommand, chanVaultErr := vault.LocalStart(vaultFolder)
+		vaultCommand, chanVaultErr, err := vault.LocalStart(vaultFolder)
+		if err != nil {
+			fmt.Println("could not start vault:", err.Error())
+			os.Exit(1)
+		}
 
 		vaultKeys := getVaultKeys(vaultFolder)
 		vaultToken := getVaultToken(vaultFolder)
@@ -141,18 +144,12 @@ func vaultLocalCommand() {
 			fmt.Println("trying to unseal vault:")
 		}
 
-		for _, vaultKey := range vaultKeys {
-			unsealCommand, err := vault.GetUnsealCommand(vaultKey)
-			fmt.Println(unsealCommand)
+		for i, vaultKey := range vaultKeys {
+			sealed, err := vault.LocalUnseal(vaultKey)
 			if err != nil {
-				log.Fatal(err)
-			}
-
-			out, err := unsealCommand.CombinedOutput()
-			if err != nil {
-				fmt.Println("could not unseal vault", err, string(out))
+				fmt.Println("could not unseal vault with key", i+1, err)
 			} else {
-				fmt.Println(string(out))
+				fmt.Println("unseal key", i+1, "accepted, sealed:", sealed)
 				// STORE VALID CREDENTIALS FOR VAULT
 				fmt.Println("VAULT-STORE: Persisting valid token/key values for vault")
 				if useVaultKeyStore {
@@ -231,7 +228,7 @@ func getVaultToken(vaultFolder string) string {
 		os.Exit(1)
 	}
 	if len(vaultToken) > 0 {
-		fmt.Println("Using token from standard input", vaultToken)
+		fmt.Println("Using token from standard input")
 	}
 
 	return vaultToken
