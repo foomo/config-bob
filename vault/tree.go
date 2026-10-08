@@ -1,11 +1,11 @@
 package vault
 
 import (
-	"encoding/json"
 	"fmt"
-	"maps"
-	"os/exec"
 	"strings"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // Tree a tree of secrets
@@ -27,44 +27,51 @@ func Tree(path string) error {
 }
 
 func tree(path string) (map[string]map[string]string, error) {
-	path = strings.TrimSuffix(path, "/")
-	cmd := exec.Command("vault", "list", "-format", "json", path)
-	jsonBytes, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, vaultErr(jsonBytes, err)
-	}
-	var paths []string
-	if string(jsonBytes) == "No entries found\n" {
-		// thank you for the json
-		return nil, nil
-	}
-	err = json.Unmarshal(jsonBytes, &paths)
+	leaves, err := leafPaths(strings.TrimSuffix(path, "/"))
 	if err != nil {
 		return nil, err
 	}
-
-	vaultData := map[string]map[string]string{}
-	for _, p := range paths {
-		current := fmt.Sprintf("%s/%s", strings.TrimSuffix(path, "/"), strings.TrimPrefix(p, "/"))
-		if strings.HasSuffix(p, "/") {
-			path := path + "/" + p[:len(p)-1]
-
-			data, err := tree(path)
+	vaultData := make(map[string]map[string]string, len(leaves))
+	var (
+		g  errgroup.Group
+		mu sync.Mutex
+	)
+	for _, leaf := range leaves {
+		g.Go(func() error {
+			data, err := Read(leaf)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			maps.Copy(vaultData, data)
-
-		} else {
-			data, err := Read(current)
-			if err != nil {
-				return nil, err
-			}
-			vaultData[current] = map[string]string{}
-			maps.Copy(vaultData[current], data)
-		}
-
+			mu.Lock()
+			vaultData[leaf] = data
+			mu.Unlock()
+			return nil
+		})
 	}
-
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
 	return vaultData, nil
+}
+
+// leafPaths lists folders recursively and returns all secret paths below path
+func leafPaths(path string) ([]string, error) {
+	paths, err := list(path)
+	if err != nil {
+		return nil, err
+	}
+	var leaves []string
+	for _, p := range paths {
+		current := path + "/" + strings.TrimPrefix(p, "/")
+		if strings.HasSuffix(p, "/") {
+			sub, err := leafPaths(strings.TrimSuffix(current, "/"))
+			if err != nil {
+				return nil, err
+			}
+			leaves = append(leaves, sub...)
+		} else {
+			leaves = append(leaves, current)
+		}
+	}
+	return leaves, nil
 }
