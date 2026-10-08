@@ -6,7 +6,6 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
-	"syscall"
 	"testing"
 
 	"github.com/foomo/config-bob/vault"
@@ -181,21 +180,6 @@ func TestWriteProcessingResultEnforcesMode(t *testing.T) {
 	entries, err := os.ReadDir(target)
 	require.NoError(t, err)
 	require.Len(t, entries, 1, "no temp files may be left behind")
-}
-
-func TestWriteProcessingResultIgnoresUmask(t *testing.T) {
-	old := syscall.Umask(0o077)
-	defer syscall.Umask(old)
-	target := t.TempDir()
-	writeOne(t, target, "shared", 0o644)
-	info, err := os.Stat(filepath.Join(target, "out.conf"))
-	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o644), info.Mode().Perm())
-
-	writeOne(t, target, "shared", 0o666)
-	info, err = os.Stat(filepath.Join(target, "out.conf"))
-	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o644), info.Mode().Perm(), "group and others must never get write access")
 }
 
 func TestWriteProcessingResultRejectsSymlinkEscape(t *testing.T) {

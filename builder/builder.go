@@ -95,7 +95,8 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	for _, file := range keys {
 		processingResult := result.Files[file]
 		i++
-		perm := processingResult.info.Mode().Perm()
+		// keep the template mode but never let others write the output
+		perm := processingResult.info.Mode().Perm() &^ 0o022
 		fmt.Println(perm, i, path.Join(targetFolder, file))
 		if err := replaceFile(root, file, processingResult.bytes, perm); err != nil {
 			return err
@@ -107,14 +108,14 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 // replaceFile writes a temp file and renames it over name, so existing or read-only outputs get exactly perm
 func replaceFile(root *os.Root, name string, data []byte, perm os.FileMode) error {
 	tmp := name + ".bob-tmp-" + rand.Text()
-	f, err := root.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+	f, err := root.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return err
 	}
 	_, err = f.Write(data)
 	if err == nil {
-		// OpenFile applies the umask, so set the template mode explicitly but never let others write the output
-		err = f.Chmod(perm &^ 0o022)
+		// set the mode explicitly, OpenFile would apply the umask
+		err = f.Chmod(perm)
 	}
 	if closeErr := f.Close(); err == nil {
 		err = closeErr
