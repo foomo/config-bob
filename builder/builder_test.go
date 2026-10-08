@@ -89,7 +89,7 @@ payment:
 
 	require.Len(t, r.Files, len(expected))
 	for name, content := range expected {
-		fileResult, ok := r.Files[filepath.Join(exampleA, name)]
+		fileResult, ok := r.Files[name]
 		require.True(t, ok, "missing file %q", name)
 		require.Equal(t, content, string(fileResult.bytes), "content mismatch for %q", name)
 	}
@@ -110,6 +110,25 @@ func TestProcessCopyPrefix(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "raw.txt.tpl"), []byte("{{ .x }}"), 0o644))
 	r, err := processFolder(dir, map[string]any{"x": "rendered"})
 	require.NoError(t, err)
-	require.Equal(t, "{{ .x }}", string(r.Files[filepath.Join(dir, "raw.txt")].bytes))
-	require.Equal(t, "rendered", string(r.Files[filepath.Join(dir, "raw.txt.tpl")].bytes))
+	require.Equal(t, "{{ .x }}", string(r.Files["raw.txt"].bytes))
+	require.Equal(t, "rendered", string(r.Files["raw.txt.tpl"].bytes))
+}
+
+func TestWriteProcessingResultPaths(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "templates")
+	require.NoError(t, os.MkdirAll(filepath.Join(source, "values"), 0o755))
+	tpl := filepath.Join(source, "values", "x.yaml")
+	require.NoError(t, os.WriteFile(tpl, []byte("name: {{ .name }}"), 0o644))
+
+	r, err := processFolder(source, map[string]any{"name": "demo"})
+	require.NoError(t, err)
+	target := t.TempDir()
+	require.NoError(t, WriteProcessingResult(target, r))
+
+	out, err := os.ReadFile(filepath.Join(target, "values", "x.yaml"))
+	require.NoError(t, err)
+	require.Equal(t, "name: demo", string(out))
+	src, err := os.ReadFile(tpl)
+	require.NoError(t, err)
+	require.Equal(t, "name: {{ .name }}", string(src), "the source template must stay untouched")
 }
