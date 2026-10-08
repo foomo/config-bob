@@ -1,9 +1,10 @@
-name: Release Tag
+name: Release
 
+# Publishing the Release Drafter draft creates the tag; goreleaser attaches assets to that release
 on:
-  push:
-    tags:
-      - v*.*.*
+  release:
+    types:
+      - published
   workflow_dispatch:
 
 permissions:
