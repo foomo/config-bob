@@ -68,13 +68,18 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	if err != nil {
 		return errors.New("could not create target folder")
 	}
+	// writing through a root keeps symlinks inside the target from redirecting output outside of it
+	root, err := os.OpenRoot(targetFolder)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
 	i := 0
 	sort.Strings(result.Folders)
 	for _, folder := range result.Folders {
 		i++
-		folder = path.Join(targetFolder, folder)
-		fmt.Println(i, folder)
-		err := os.MkdirAll(folder, 0o744)
+		fmt.Println(i, path.Join(targetFolder, folder))
+		err := root.MkdirAll(folder, 0o744)
 		if err != nil {
 			return err
 		}
@@ -89,14 +94,34 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	for _, file := range keys {
 		processingResult := result.Files[file]
 		i++
-		file = path.Join(targetFolder, file)
-		fmt.Println(processingResult.info.Mode().Perm(), i, file)
-		err := os.WriteFile(file, processingResult.bytes, processingResult.info.Mode().Perm())
-		if err != nil {
+		perm := processingResult.info.Mode().Perm()
+		fmt.Println(perm, i, path.Join(targetFolder, file))
+		if err := replaceFile(root, file, processingResult.bytes, perm); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// replaceFile writes a temp file and renames it over name, so existing or read-only outputs get exactly perm
+func replaceFile(root *os.Root, name string, data []byte, perm os.FileMode) error {
+	tmp := name + ".bob-tmp"
+	_ = root.Remove(tmp)
+	f, err := root.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = root.Rename(tmp, name)
+	}
+	if err != nil {
+		_ = root.Remove(tmp)
+	}
+	return err
 }
 
 func readData(files []string) (any, error) {
@@ -118,6 +143,9 @@ func readData(files []string) (any, error) {
 			err = yaml.Unmarshal(dataBytes, &fileData)
 		} else {
 			return nil, errors.New("unsupported data file format i need .json, .yml or .yaml")
+		}
+		if err != nil {
+			return nil, fmt.Errorf("could not parse data file %s: %w", file, err)
 		}
 
 		maps.Copy(data, fileData)
