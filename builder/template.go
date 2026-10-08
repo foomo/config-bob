@@ -9,17 +9,9 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"text/template"
 
-	"golang.org/x/sync/singleflight"
 	"gopkg.in/yaml.v2"
-)
-
-var (
-	secretCacheSF   = singleflight.Group{}
-	secretCacheLock = &sync.RWMutex{}
-	secretCache     = map[string]string{}
 )
 
 // TemplateFuncs knock yourself out - this is what builder user for templating
@@ -104,29 +96,8 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return string(rawJSON), nil
 	},
-	"secret": func(key string) (string, error) {
-		secretCacheLock.RLock()
-		if value, ok := secretCache[key]; ok {
-			secretCacheLock.RUnlock()
-			return value, nil
-		}
-		secretCacheLock.RUnlock()
-		value, err, _ := secretCacheSF.Do(key, func() (any, error) {
-			value, err := rawSecret(key)
-			if err != nil {
-				return nil, err
-			}
-			secretCacheLock.Lock()
-			secretCache[key] = value
-			secretCacheLock.Unlock()
-			return value, nil
-		})
-		if err != nil {
-			return "", err
-		}
-
-		return value.(string), nil
-	},
+	// vault.Read caches whole secrets by path, so all properties of a path share one request
+	"secret":  rawSecret,
 	"replace": replace,
 	"op":      onePassword,
 	"absPath": filepath.Abs,

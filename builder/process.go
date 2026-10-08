@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"path"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -67,6 +68,8 @@ func processFolder(folderPath string, data any) (result *ProcessingResult, err e
 		g  errgroup.Group
 		mu sync.Mutex
 	)
+	// bound parallel templates, each may start op processes or vault requests
+	g.SetLimit(runtime.NumCPU() * 4)
 	for _, file := range files {
 		run := !isCopied(file, copiedFiles)
 		g.Go(func() error {
