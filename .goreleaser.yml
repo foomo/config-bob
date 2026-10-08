@@ -31,6 +31,7 @@ brews:
   - repository:
       owner: foomo
       name: homebrew-config-bob
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
 
     caveats: "config-bob -h"
     homepage: "https://github.com/foomo/config-bob"
