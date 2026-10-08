@@ -75,7 +75,8 @@ func processFolder(folderPath string, data any) (result *ProcessingResult, err e
 				return err
 			}
 			mu.Lock()
-			p.Files[fr.filename] = fr
+			// keyed relative to folderPath: WriteProcessingResult joins the key onto the target folder
+			p.Files[file] = fr
 			mu.Unlock()
 			return nil
 		})
