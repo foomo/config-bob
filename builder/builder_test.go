@@ -191,6 +191,11 @@ func TestWriteProcessingResultIgnoresUmask(t *testing.T) {
 	info, err := os.Stat(filepath.Join(target, "out.conf"))
 	require.NoError(t, err)
 	require.Equal(t, os.FileMode(0o644), info.Mode().Perm())
+
+	writeOne(t, target, "shared", 0o666)
+	info, err = os.Stat(filepath.Join(target, "out.conf"))
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o644), info.Mode().Perm(), "group and others must never get write access")
 }
 
 func TestWriteProcessingResultRejectsSymlinkEscape(t *testing.T) {

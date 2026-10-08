@@ -113,8 +113,8 @@ func replaceFile(root *os.Root, name string, data []byte, perm os.FileMode) erro
 	}
 	_, err = f.Write(data)
 	if err == nil {
-		// OpenFile applies the umask, the template mode is the contract
-		err = f.Chmod(perm)
+		// OpenFile applies the umask, so set the template mode explicitly but never let others write the output
+		err = f.Chmod(perm &^ 0o022)
 	}
 	if closeErr := f.Close(); err == nil {
 		err = closeErr
