@@ -27,8 +27,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - run: go test ./...
-
       # GITHUB_TOKEN cannot push to the separate homebrew tap repository
       # https://github.com/tibdex/github-app-token/releases
       - id: app_token

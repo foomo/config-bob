@@ -1,4 +1,4 @@
-[![Travis CI](https://travis-ci.org/foomo/config-bob.svg?branch=master)](https://travis-ci.org/foomo/config-bob)
+[![Test Branch](https://github.com/foomo/config-bob/actions/workflows/test.yml/badge.svg)](https://github.com/foomo/config-bob/actions/workflows/test.yml)
 
 # Bob renders config hierarchies
 
