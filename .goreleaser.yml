@@ -26,9 +26,10 @@ archives:
       - goos: windows
         formats: [zip]
 
-brews:
+homebrew_casks:
   # Repository to push the tap to.
-  - repository:
+  - name: config-bob
+    repository:
       owner: foomo
       name: homebrew-config-bob
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
@@ -36,3 +37,10 @@ brews:
     caveats: "config-bob -h"
     homepage: "https://github.com/foomo/config-bob"
     description: "CLI utility to generate secure configurations"
+    # the binaries are not notarized, so macOS would quarantine them
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/config-bob"]
+          end
