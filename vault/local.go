@@ -83,9 +83,9 @@ var localStartTimeout = 10 * time.Second
 
 var localClient = &http.Client{Timeout: 5 * time.Second}
 
-func LocalStart(folder string) (cmd *exec.Cmd, chanVaultErr chan error, err error) {
-	chanVaultErr = make(chan error, 1)
-	cmd = exec.Command("vault", "server", "-config", "config.hcl")
+func LocalStart(folder string) (*exec.Cmd, chan error, error) {
+	chanVaultErr := make(chan error, 1)
+	cmd := exec.Command("vault", "server", "-config", "config.hcl")
 	cmd.Dir = folder
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
