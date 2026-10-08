@@ -1,26 +1,33 @@
 # .goreleaser.yml
+version: 2
+
 # Build customization
 builds:
   - binary: config-bob
-    main:   config-bob.go
+    main: config-bob.go
     env:
-        - CGO_ENABLED=0
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
     goos:
       - windows
       - darwin
       - linux
     goarch:
       - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
 
-# .goreleaser.yml
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
 brews:
-  # Reporitory to push the tap to.
+  # Repository to push the tap to.
   - repository:
       owner: foomo
       name: homebrew-config-bob
