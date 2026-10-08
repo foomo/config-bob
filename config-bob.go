@@ -63,7 +63,7 @@ func isHelpFlag(arg string) bool {
 
 func help() {
 	fmt.Println("usage:", os.Args[0], "<command>")
-	fmt.Println(helpCommands)
+	fmt.Print(helpCommands)
 }
 
 func versionCommand() {
