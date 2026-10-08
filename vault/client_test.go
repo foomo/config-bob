@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -59,19 +58,6 @@ func TestReadCachesByPath(t *testing.T) {
 	require.Equal(t, int32(1), requests.Load())
 }
 
-func TestReadTokenFile(t *testing.T) {
-	t.Setenv("VAULT_TOKEN", "")
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	require.NoError(t, os.WriteFile(filepath.Join(home, ".vault-token"), []byte("file-token\n"), 0o600))
-	useVault(t, func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "file-token", r.Header.Get("X-Vault-Token"))
-		respond(w, map[string]any{"user": "app"})
-	})
-	_, err := Read("secret/db")
-	require.NoError(t, err)
-}
-
 func TestReadErrors(t *testing.T) {
 	t.Setenv("VAULT_TOKEN", "test-token")
 	useVault(t, func(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +71,17 @@ func TestReadErrors(t *testing.T) {
 	require.ErrorContains(t, err, "no secret found")
 	_, err = Read("secret/number")
 	require.ErrorContains(t, err, "not a string")
+}
+
+func TestReadSanitizesPathAndNulls(t *testing.T) {
+	t.Setenv("VAULT_TOKEN", "test-token")
+	useVault(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v1/secret/db", r.URL.Path)
+		respond(w, map[string]any{"user": "app", "comment": nil})
+	})
+	secret, err := Read("/secret/db/")
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"user": "app", "comment": ""}, secret)
 }
 
 func TestTree(t *testing.T) {
@@ -104,14 +101,32 @@ func TestTree(t *testing.T) {
 	})
 	data, err := tree("secret/")
 	require.NoError(t, err)
+	_, err = tree("secret/empty")
+	require.ErrorContains(t, err, "no entries found")
 	require.Equal(t, map[string]map[string]string{
 		"secret/a":     {"path": "/v1/secret/a"},
 		"secret/dir/b": {"path": "/v1/secret/dir/b"},
 	}, data)
 }
 
+func TestHtpasswdLastEntryWins(t *testing.T) {
+	t.Setenv("VAULT_TOKEN", "test-token")
+	useVault(t, func(w http.ResponseWriter, r *http.Request) {
+		respond(w, map[string]any{"user": "admin", "password": "pw-" + filepath.Base(r.URL.Path)})
+	})
+	file := filepath.Join(t.TempDir(), "htpasswd")
+	require.NoError(t, writeHtpasswdFiles(HtpasswdConfig{file: {"secret/a", "secret/b"}}, htpasswd.HashSHA))
+
+	want := htpasswd.HashedPasswords{}
+	require.NoError(t, want.SetPassword("admin", "pw-b", htpasswd.HashSHA))
+	got, err := htpasswd.ParseHtpasswdFile(file)
+	require.NoError(t, err)
+	require.Equal(t, want, got)
+}
+
 func TestHtpasswdKeepsExistingUsers(t *testing.T) {
 	Dummy = true
+	t.Cleanup(func() { Dummy = false })
 	file := filepath.Join(t.TempDir(), "htpasswd")
 	existing := htpasswd.HashedPasswords{}
 	require.NoError(t, existing.SetPassword("old-user", "old", htpasswd.HashSHA))

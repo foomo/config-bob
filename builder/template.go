@@ -96,7 +96,7 @@ var TemplateFuncs = template.FuncMap{
 		}
 		return string(rawJSON), nil
 	},
-	// vault.Read caches whole secrets by path, so every property of a path costs one request
+	// vault.Read caches whole secrets by path, so all properties of a path share one request
 	"secret":  rawSecret,
 	"replace": replace,
 	"op":      onePassword,

@@ -2,12 +2,11 @@ package vault
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/vault/api/cliconfig"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -29,21 +28,29 @@ var (
 // client is created once so all reads share one connection pool
 var client = sync.OnceValues(newClient)
 
-// newClient is configured from the VAULT_* env vars like the vault CLI
+// newClient is configured from the VAULT_* env vars and the token helper like the vault CLI
 func newClient() (*api.Client, error) {
 	c, err := api.NewClient(nil)
 	if err != nil {
 		return nil, err
 	}
 	if c.Token() == "" {
-		// same fallback as the default token helper of the vault CLI after `vault login`
-		if home, err := os.UserHomeDir(); err == nil {
-			if token, err := os.ReadFile(filepath.Join(home, ".vault-token")); err == nil {
-				c.SetToken(strings.TrimSpace(string(token)))
-			}
+		helper, err := cliconfig.DefaultTokenHelper()
+		if err != nil {
+			return nil, err
 		}
+		token, err := helper.Get()
+		if err != nil {
+			return nil, err
+		}
+		c.SetToken(strings.TrimSpace(token))
 	}
 	return c, nil
+}
+
+// sanitizePath trims like the vault CLI, so "/secret/db" and "secret/db" are the same secret
+func sanitizePath(path string) string {
+	return strings.Trim(strings.TrimSpace(path), "/")
 }
 
 // Read data from a vault - env vars need to be set; each path is fetched once per process
@@ -59,6 +66,7 @@ func Read(path string) (secret map[string]string, err error) {
 		}, nil
 	}
 
+	path = sanitizePath(path)
 	value, err, _ := readGroup.Do(path, func() (any, error) {
 		readLock.RLock()
 		cached, ok := secretCache[path]
@@ -97,6 +105,11 @@ func read(path string) (map[string]string, error) {
 	}
 	data := make(map[string]string, len(secret.Data))
 	for key, value := range secret.Data {
+		if value == nil {
+			// the vault CLI output decoded null as an empty string
+			data[key] = ""
+			continue
+		}
 		s, ok := value.(string)
 		if !ok {
 			return nil, fmt.Errorf("value of %q at %q is not a string", key, path)
@@ -111,11 +124,22 @@ func list(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	secret, err := c.Logical().List(path)
-	if err != nil || secret == nil {
+	secret, err := c.Logical().List(sanitizePath(path))
+	if err != nil {
 		return nil, err
 	}
-	keys, _ := secret.Data["keys"].([]any)
+	var keys []any
+	if secret != nil {
+		keys, _ = secret.Data["keys"].([]any)
+	}
+	if len(keys) == 0 {
+		// like the vault CLI, an empty or missing folder is an error
+		var warnings []string
+		if secret != nil {
+			warnings = secret.Warnings
+		}
+		return nil, fmt.Errorf("no entries found at %q %v", path, warnings)
+	}
 	paths := make([]string, 0, len(keys))
 	for _, key := range keys {
 		if s, ok := key.(string); ok {
