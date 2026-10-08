@@ -35,6 +35,8 @@ jobs:
         with:
           app_id: ${{ secrets.TOKEN_APP_ID }}
           private_key: ${{ secrets.TOKEN_APP_PRIVATE_KEY }}
+          repositories: '["homebrew-config-bob"]'
+          permissions: '{"contents":"write"}'
 
       # https://github.com/goreleaser/goreleaser-action/releases
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
