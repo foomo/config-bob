@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path"
+	"sync"
 	"text/template"
 	"time"
 )
@@ -114,6 +116,82 @@ func LocalStart(folder string) (*exec.Cmd, chan error, error) {
 			fmt.Println("waiting for vault to start")
 		}
 	}
+}
+
+// localCopyConfig serves a storage copy on loopback only; mlock is off so it also runs in containers without IPC_LOCK
+const localCopyConfig = `disable_mlock = true
+
+storage "file" {
+  path = "db"
+}
+
+listener "tcp" {
+  address         = %q
+  cluster_address = %q
+  tls_disable     = 1
+}
+`
+
+// freeLoopbackAddrs asks the kernel for two distinct unused loopback ports
+// ponytail: the ports are released before vault binds them, a process taking one in between fails the start; retry the build
+func freeLoopbackAddrs() (addr, clusterAddr string, err error) {
+	a, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", "", err
+	}
+	defer a.Close()
+	b, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", "", err
+	}
+	defer b.Close()
+	return a.Addr().String(), b.Addr().String(), nil
+}
+
+// LocalOpenCopy starts and unseals the vault of folder on a temporary copy of its db, because a starting vault
+// rewrites its keyring files and the committed storage must stay untouched. The copy listens on a random loopback
+// port and VAULT_ADDR of this process points at it; stop kills it and removes the copy.
+func LocalOpenCopy(folder string, keys []string) (stop func(), err error) {
+	tmp, err := os.MkdirTemp("", "config-bob-vault-")
+	if err != nil {
+		return nil, err
+	}
+	addr, clusterAddr, err := freeLoopbackAddrs()
+	if err == nil {
+		err = os.CopyFS(path.Join(tmp, "db"), os.DirFS(localGetLayout(folder).folders.db))
+	}
+	if err == nil {
+		err = os.WriteFile(path.Join(tmp, "config.hcl"), fmt.Appendf(nil, localCopyConfig, addr, clusterAddr), 0o600)
+	}
+	if err == nil {
+		err = os.Setenv("VAULT_ADDR", "http://"+addr)
+	}
+	if err != nil {
+		_ = os.RemoveAll(tmp)
+		return nil, err
+	}
+	cmd, chanVaultErr, err := LocalStart(tmp)
+	if err != nil {
+		_ = os.RemoveAll(tmp)
+		return nil, err
+	}
+	stop = sync.OnceFunc(func() {
+		_ = cmd.Process.Kill()
+		<-chanVaultErr
+		_ = os.RemoveAll(tmp)
+	})
+	sealed := true
+	for i, key := range keys {
+		if sealed, err = LocalUnseal(key); err != nil {
+			stop()
+			return nil, fmt.Errorf("unseal key %d: %w", i+1, err)
+		}
+	}
+	if sealed {
+		stop()
+		return nil, fmt.Errorf("vault is still sealed after %d unseal keys", len(keys))
+	}
+	return stop, nil
 }
 
 func LocalIsRunning() bool {
