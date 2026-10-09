@@ -135,6 +135,10 @@ If you want to keep your secrets under version control and you do not want to ru
 config-bob vault-local path/to/vault-folder
 ```
 
+Bob asks for the unseal keys and the token on every start and never stores them. To skip the prompts set `CFB_KEYS` (comma separated) and `CFB_TOKEN`.
+
+Older versions saved the token and unseal keys in plain text in `~/.cfb/vault-store.json`. Delete that file.
+
 ## Integration with 1Password
 
 We have added a template helper to get fields from 1Password

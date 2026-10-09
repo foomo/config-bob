@@ -26,7 +26,7 @@ func TestWriteProcessingResultIgnoresUmask(t *testing.T) {
 	require.Equal(t, os.FileMode(0o644), info.Mode().Perm(), "group and others must never get write access")
 }
 
-func TestWriteProcessingResultFoldersAreTraversable(t *testing.T) {
+func TestWriteProcessingResultFoldersAreOwnerOnly(t *testing.T) {
 	old := syscall.Umask(0o022)
 	defer syscall.Umask(old)
 	source := t.TempDir()
@@ -39,6 +39,6 @@ func TestWriteProcessingResultFoldersAreTraversable(t *testing.T) {
 	for _, folder := range []string{target, filepath.Join(target, "httpd")} {
 		info, err := os.Stat(folder)
 		require.NoError(t, err)
-		require.Equal(t, os.FileMode(0o755), info.Mode().Perm(), folder)
+		require.Equal(t, os.FileMode(0o700), info.Mode().Perm(), folder)
 	}
 }

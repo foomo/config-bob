@@ -63,8 +63,8 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	fmt.Println(line)
 	fmt.Println("building folder structure:")
 	fmt.Println(line)
-	// folders need x for others to reach the files, the file modes keep secrets private
-	err := os.MkdirAll(targetFolder, 0o755)
+	// owner only: rendered files hold secrets and git checks templates out as 0644
+	err := os.MkdirAll(targetFolder, 0o700)
 	if err != nil {
 		return errors.New("could not create target folder")
 	}
@@ -79,7 +79,7 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	for _, folder := range result.Folders {
 		i++
 		fmt.Println(i, path.Join(targetFolder, folder))
-		err := root.MkdirAll(folder, 0o755)
+		err := root.MkdirAll(folder, 0o700)
 		if err != nil {
 			return err
 		}
