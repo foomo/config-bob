@@ -1,0 +1,8 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+[settings]
+minimum_release_age = "3d"
+
+[tools]
+# https://mise-tools.jdx.dev/tools/vault
+vault = "2.1.2"
