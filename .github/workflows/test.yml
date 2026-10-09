@@ -18,6 +18,8 @@ jobs:
     name: go (vault ${{ matrix.vault }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # a new vault release shows up red here without blocking merges through the required test check
+    continue-on-error: ${{ matrix.vault == 'latest' }}
     strategy:
       fail-fast: false
       matrix:
