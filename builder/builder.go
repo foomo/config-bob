@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -153,9 +152,31 @@ func readData(files []string) (any, error) {
 			return nil, fmt.Errorf("could not parse data file %s: %w", file, err)
 		}
 
-		maps.Copy(data, fileData)
+		mergeData(data, fileData)
 	}
 	return data, nil
+}
+
+// mergeData deep merges src into dst: nested maps merge key by key, any other value from src replaces dst
+func mergeData(dst, src any) any {
+	switch s := src.(type) {
+	case map[string]any:
+		if d, ok := dst.(map[string]any); ok {
+			for k, v := range s {
+				d[k] = mergeData(d[k], v)
+			}
+			return d
+		}
+	case map[any]any:
+		// yaml.v2 decodes nested maps with interface keys
+		if d, ok := dst.(map[any]any); ok {
+			for k, v := range s {
+				d[k] = mergeData(d[k], v)
+			}
+			return d
+		}
+	}
+	return src
 }
 
 func getCopy(root string) (copy []string) {

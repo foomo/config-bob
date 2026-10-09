@@ -16,6 +16,12 @@ We needed a simple tool to populate our app configurations with data and **secre
 config-bob build path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
 ```
 
+Several data files are deep merged in the given order: nested maps merge key by key, and any other value (scalars, lists) from a later file replaces the earlier one. This lets a shared base file carry the defaults and small files carry the overrides.
+
+```bash
+config-bob build base.yaml stage.yaml path/to/src/dir path/to/target/dir
+```
+
 ### Bobs template helpers
 
 Apart from standard template functions we have added a few extra ones, which should come in handy, when writing configurations:

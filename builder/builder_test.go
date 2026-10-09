@@ -143,6 +143,52 @@ func TestReadDataRejectsBrokenFile(t *testing.T) {
 	require.ErrorContains(t, err, broken)
 }
 
+func TestReadDataDeepMerges(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "base.yaml")
+	overlay := filepath.Join(dir, "globus-a.yaml")
+	require.NoError(t, os.WriteFile(base, []byte(`
+global:
+  env: stage
+  hosts: [a, b]
+  db:
+    host: mongo
+    port: 27017
+services:
+  shop: {replicas: 2}
+`), 0o644))
+	require.NoError(t, os.WriteFile(overlay, []byte(`
+global:
+  hosts: [c]
+  db:
+    port: 27018
+services: plain
+`), 0o644))
+
+	data, err := readData([]string{base, overlay})
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"global": map[any]any{
+			"env":   "stage",
+			"hosts": []any{"c"},
+			"db":    map[any]any{"host": "mongo", "port": 27018},
+		},
+		"services": "plain",
+	}, data)
+}
+
+func TestReadDataDeepMergesJSON(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "base.json")
+	overlay := filepath.Join(dir, "overlay.json")
+	require.NoError(t, os.WriteFile(base, []byte(`{"db": {"host": "mongo", "port": 1}}`), 0o644))
+	require.NoError(t, os.WriteFile(overlay, []byte(`{"db": {"port": 2}}`), 0o644))
+
+	data, err := readData([]string{base, overlay})
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"db": map[string]any{"host": "mongo", "port": float64(2)}}, data)
+}
+
 func TestRawSecretMissingPropHidesValues(t *testing.T) {
 	vault.Dummy = true
 	_, err := rawSecret("secret/db.passwrod")
