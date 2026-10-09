@@ -40,6 +40,18 @@ func TestLocalUnsealError(t *testing.T) {
 	require.ErrorContains(t, err, "invalid key")
 }
 
+func TestLocalOpenCopyRefusesRunningVault(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"initialized":true}`))
+	}))
+	defer server.Close()
+	t.Setenv("VAULT_ADDR", server.URL)
+
+	_, err := LocalOpenCopy(t.TempDir(), []string{"key"})
+	require.ErrorContains(t, err, "already listening")
+}
+
 func TestLocalStartWithoutVault(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	_, _, err := LocalStart(t.TempDir())

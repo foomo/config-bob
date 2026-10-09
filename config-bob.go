@@ -1,11 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/bgentry/speakeasy"
 	"github.com/foomo/config-bob/builder"
@@ -266,37 +269,82 @@ func getVaultKeys(vaultFolder string) (vaultKeys []string) {
 }
 
 func buildCommand() {
-	buildUsage := func() {
+	flags := flag.NewFlagSet(commandBuild, flag.ExitOnError)
+	vaultDir := flags.String("vault-dir", "", "start and unseal the local vault in this folder for the build, keys from CFB_KEYS, token from CFB_TOKEN")
+	flags.Usage = func() {
 		fmt.Println(
 			"usage: ",
 			os.Args[0],
 			commandBuild,
+			"[--vault-dir path/to/vault/folder]",
 			"path/to/source-folder-a",
 			"[ path/to/source-folder-b, ... ]",
 			"[ path/to/data-file.json | data-file.yaml ]",
 			"path/to/target/dir",
 		)
-		os.Exit(1)
+		flags.PrintDefaults()
 	}
-	if isHelpFlag(os.Args[2]) {
-		buildUsage()
-	}
-	builderArgs, err := builder.GetBuilderArgs(os.Args[2:])
+	_ = flags.Parse(os.Args[2:])
+	builderArgs, err := builder.GetBuilderArgs(flags.Args())
 	if err != nil {
 		fmt.Println(err.Error())
-		buildUsage()
-	} else {
-		result, err := builder.Build(builderArgs)
-		if err != nil {
-			fmt.Println("a build error has occurred:", err.Error())
-			os.Exit(1)
-		}
-
-		if err := builder.WriteProcessingResult(builderArgs.TargetFolder, result); err != nil {
-			fmt.Println("could not write processing result to fs:", err.Error())
+		flags.Usage()
+		os.Exit(1)
+	}
+	stop := func() {}
+	if *vaultDir != "" {
+		if stop, err = openVault(*vaultDir); err != nil {
+			fmt.Println("could not open vault:", err.Error())
 			os.Exit(1)
 		}
 	}
+	err = build(builderArgs)
+	// stop before exiting, os.Exit skips deferred calls
+	stop()
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+}
+
+func build(builderArgs *builder.Args) error {
+	result, err := builder.Build(builderArgs)
+	if err != nil {
+		return fmt.Errorf("a build error has occurred: %w", err)
+	}
+	if err := builder.WriteProcessingResult(builderArgs.TargetFolder, result); err != nil {
+		return fmt.Errorf("could not write processing result to fs: %w", err)
+	}
+	return nil
+}
+
+// openVault unseals the local vault in dir for this process only: nothing is persisted to the key store
+func openVault(dir string) (stop func(), err error) {
+	vaultFolder, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	if !vault.LocalIsSetUp(vaultFolder) {
+		return nil, fmt.Errorf("%s needs a config.hcl and a db folder", vaultFolder)
+	}
+	vault.LocalSetEnv()
+	vaultKeys := getVaultKeys(vaultFolder)
+	if err := os.Setenv("VAULT_TOKEN", getVaultToken(vaultFolder)); err != nil {
+		return nil, err
+	}
+	stop, err = vault.LocalOpenCopy(vaultFolder, vaultKeys)
+	if err != nil {
+		return nil, err
+	}
+	// an interrupted build must not leave the vault holding its port
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-signals
+		stop()
+		os.Exit(130)
+	}()
+	return stop, nil
 }
 
 func main() {
