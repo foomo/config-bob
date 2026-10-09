@@ -329,7 +329,6 @@ func openVault(dir string) (stop func(), err error) {
 	if !vault.LocalIsSetUp(vaultFolder) {
 		return nil, fmt.Errorf("%s needs a config.hcl and a db folder", vaultFolder)
 	}
-	vault.LocalSetEnv()
 	vaultKeys := getVaultKeys(vaultFolder)
 	vaultToken := getVaultToken(vaultFolder)
 	// registered after the prompts so ctrl-c still aborts them, and before the start so a signal

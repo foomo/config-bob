@@ -4,7 +4,9 @@ package vault
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -46,21 +48,35 @@ func snapshot(t *testing.T, dir string) map[string]string {
 	return files
 }
 
+func TestLocalOpenCopyCleansUpWhenVaultFails(t *testing.T) {
+	fakeVault(t, "exit 1")
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp)
+	folder := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(folder, "db", "core"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(folder, "db", "core", "_keyring"), []byte("x"), 0o644))
+
+	_, err := LocalOpenCopy(folder, []string{"key"})
+	require.ErrorContains(t, err, "exited before it was ready")
+	entries, err := os.ReadDir(tmp)
+	require.NoError(t, err)
+	require.Empty(t, entries, "the temporary copy must be removed")
+}
+
 func TestLocalOpenCopyWithRealVault(t *testing.T) {
 	if _, err := exec.LookPath("vault"); err != nil {
 		t.Skip("vault binary not in PATH")
 	}
-	t.Setenv("VAULT_ADDR", getLocalVaultAddress())
-	if LocalIsRunning() {
-		t.Skip("a vault is already listening on " + vaultAddr)
-	}
+	// initialise a throwaway vault with a single unseal key on its own random port
 	folder := t.TempDir()
-	require.NoError(t, LocalSetup(folder))
-
-	// initialise a throwaway vault with a single unseal key
+	addr, clusterAddr, err := freeLoopbackAddrs()
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Join(folder, "db"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(folder, "config.hcl"), fmt.Appendf(nil, localCopyConfig, addr, clusterAddr), 0o644))
+	t.Setenv("VAULT_ADDR", "http://"+addr)
 	cmd, chanVaultErr, err := LocalStart(folder)
 	require.NoError(t, err)
-	request, err := http.NewRequest(http.MethodPut, getLocalVaultAddress()+"/v1/sys/init", strings.NewReader(`{"secret_shares":1,"secret_threshold":1}`))
+	request, err := http.NewRequest(http.MethodPut, "http://"+addr+"/v1/sys/init", strings.NewReader(`{"secret_shares":1,"secret_threshold":1}`))
 	require.NoError(t, err)
 	response, err := localClient.Do(request)
 	require.NoError(t, err)
@@ -74,12 +90,18 @@ func TestLocalOpenCopyWithRealVault(t *testing.T) {
 	<-chanVaultErr
 	before := snapshot(t, folder)
 
+	// a listener on the classic port must not matter, the copy picks its own
+	if blocker, err := net.Listen("tcp", vaultAddr); err == nil {
+		defer blocker.Close()
+	}
+
 	_, err = LocalOpenCopy(folder, nil)
 	require.ErrorContains(t, err, "still sealed")
 	require.False(t, LocalIsRunning(), "a failed open must stop the vault")
 
 	stop, err := LocalOpenCopy(folder, initResult.Keys)
 	require.NoError(t, err)
+	require.NotEqual(t, "http://"+vaultAddr, os.Getenv("VAULT_ADDR"))
 	require.True(t, LocalIsRunning())
 	stop()
 	require.False(t, LocalIsRunning())

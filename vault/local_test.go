@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,16 +41,11 @@ func TestLocalUnsealError(t *testing.T) {
 	require.ErrorContains(t, err, "invalid key")
 }
 
-func TestLocalOpenCopyRefusesRunningVault(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"initialized":true}`))
-	}))
-	defer server.Close()
-	t.Setenv("VAULT_ADDR", server.URL)
-
-	_, err := LocalOpenCopy(t.TempDir(), []string{"key"})
-	require.ErrorContains(t, err, "already listening")
+func TestFreeLoopbackAddrs(t *testing.T) {
+	addr, clusterAddr, err := freeLoopbackAddrs()
+	require.NoError(t, err)
+	require.NotEqual(t, addr, clusterAddr)
+	require.True(t, strings.HasPrefix(addr, "127.0.0.1:"), addr)
 }
 
 func TestLocalStartWithoutVault(t *testing.T) {
