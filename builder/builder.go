@@ -22,7 +22,7 @@ func Build(args *Args) (*ProcessingResult, error) {
 	fmt.Println("source folders :", strings.Join(args.SourceFolders, ", "))
 	fmt.Println("target folder  :", args.TargetFolder)
 	fmt.Println(line)
-	data, err := readData(args.DataFiles)
+	data, err := readData(args.DataFiles, args.ShallowMerge)
 	if err != nil {
 		return nil, errors.New("could not read data from: " + strings.Join(args.DataFiles, ", ") + " :: " + err.Error())
 	}
@@ -125,7 +125,7 @@ func replaceFile(root *os.Root, name string, data []byte, perm os.FileMode) erro
 	return err
 }
 
-func readData(files []string) (any, error) {
+func readData(files []string, shallow bool) (any, error) {
 	if len(files) == 0 {
 		return nil, nil
 	}
@@ -149,9 +149,35 @@ func readData(files []string) (any, error) {
 			return nil, fmt.Errorf("could not parse data file %s: %w", file, err)
 		}
 
-		maps.Copy(data, fileData)
+		if shallow {
+			maps.Copy(data, fileData)
+		} else {
+			mergeData(data, fileData)
+		}
 	}
 	return data, nil
+}
+
+// mergeData deep merges src into dst: nested maps merge key by key, any other value from src replaces dst
+func mergeData(dst, src any) any {
+	switch s := src.(type) {
+	case map[string]any:
+		if d, ok := dst.(map[string]any); ok {
+			for k, v := range s {
+				d[k] = mergeData(d[k], v)
+			}
+			return d
+		}
+	case map[any]any:
+		// yaml.v2 decodes nested maps with interface keys
+		if d, ok := dst.(map[any]any); ok {
+			for k, v := range s {
+				d[k] = mergeData(d[k], v)
+			}
+			return d
+		}
+	}
+	return src
 }
 
 func getCopy(root string) (copy []string) {

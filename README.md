@@ -16,6 +16,18 @@ We needed a simple tool to populate our app configurations with data and **secre
 config-bob build path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
 ```
 
+Several data files are deep merged in the given order: nested maps merge key by key, and any other value (scalars, lists, `null`) from a later file replaces the earlier one. This lets a shared base file carry the defaults and small files carry the overrides. Merge files of the same format: a nested JSON map and a nested YAML map replace each other instead of merging.
+
+Before deep merging, a later file replaced whole top-level keys. To drop nested keys from an earlier file, now set the parent key to `null` or to a new value explicitly, or keep the old behavior with `--deep-merge=false` (flags go before the paths):
+
+```bash
+config-bob build --deep-merge=false base.yaml stage.yaml path/to/src/dir path/to/target/dir
+```
+
+```bash
+config-bob build base.yaml stage.yaml path/to/src/dir path/to/target/dir
+```
+
 ### Bobs template helpers
 
 Apart from standard template functions we have added a few extra ones, which should come in handy, when writing configurations:
