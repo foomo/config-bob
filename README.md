@@ -12,7 +12,7 @@ Bob walks one or more source folders, executes every file as a Go [`text/templat
 # Homebrew (macOS, Linux)
 brew install --cask foomo/config-bob/config-bob
 
-# Go
+# Go (`config-bob version` prints an empty line for these builds)
 go install github.com/foomo/config-bob@latest
 ```
 
