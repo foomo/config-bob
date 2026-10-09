@@ -45,7 +45,7 @@ func TestBuildWithoutArgsPrintsUsage(t *testing.T) {
 
 // throwaway credentials of the test vault in example/vault, also used by the Makefile
 const (
-	testVaultKey   = "ep3ipa04QViYX0POAQmz0+y9tpQLKPD8jOkjWa7um50="
+	testVaultKey   = "Zd5U+W/WK3cPgH4Mth5seweXjnloLmU+6exo7bzSAdE="
 	testVaultToken = "config-bob-test"
 )
 
