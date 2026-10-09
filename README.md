@@ -133,8 +133,10 @@ config-bob vault-htpasswd htpasswd.yaml
 ## Development
 
 ```bash
-make test   # go test ./...
-make build  # ./config-bob
+mise install        # vault for the tests against a real vault
+make test           # go test ./...
+make build          # ./config-bob
+make vault-example  # render example/source-vault with the committed test vault
 ```
 
 See [AGENTS.md](AGENTS.md) for conventions, compatibility constraints and the release process.

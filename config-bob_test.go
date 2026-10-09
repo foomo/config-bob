@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -39,6 +41,47 @@ func TestBuildWithoutArgsPrintsUsage(t *testing.T) {
 	out, code := runCLI(t, "build")
 	require.Equal(t, 1, code, out)
 	require.Contains(t, out, "usage:")
+}
+
+// throwaway credentials of the test vault in example/vault, also used by the Makefile
+const (
+	testVaultKey   = "Zd5U+W/WK3cPgH4Mth5seweXjnloLmU+6exo7bzSAdE="
+	testVaultToken = "config-bob-test"
+)
+
+func TestBuildWithTestVault(t *testing.T) {
+	if _, err := exec.LookPath("vault"); err != nil {
+		// CI installs vault, a skip there would hide the tests against a real vault
+		if os.Getenv("CI") != "" {
+			t.Fatal("vault binary not in PATH")
+		}
+		t.Skip("vault binary not in PATH, run mise install")
+	}
+	t.Setenv("CFB_KEYS", testVaultKey)
+	t.Setenv("CFB_TOKEN", testVaultToken)
+	before := readTree(t, "example/vault")
+	target := t.TempDir()
+
+	out, code := runCLI(t, "build --vault-dir example/vault example/source-vault "+target)
+	require.Equal(t, 0, code, out)
+	rendered, err := os.ReadFile(filepath.Join(target, "app.yaml"))
+	require.NoError(t, err)
+	require.Equal(t, "user: bob\npassword: \"test-password\"\napiKey: test-api-key\n", string(rendered))
+	require.Equal(t, before, readTree(t, "example/vault"), "the committed vault must stay untouched")
+}
+
+func readTree(t *testing.T, root string) map[string]string {
+	t.Helper()
+	files := map[string]string{}
+	require.NoError(t, filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := os.ReadFile(p)
+		files[p] = string(b)
+		return err
+	}))
+	return files
 }
 
 func TestVersionPrintsOnlyTheVersion(t *testing.T) {

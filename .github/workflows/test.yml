@@ -14,9 +14,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  go:
+    name: go (vault ${{ matrix.vault }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # a new vault release shows up red here without blocking merges through the required test check
+    continue-on-error: ${{ matrix.vault == 'latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # latest, plus the versions downstream repositories run or that last wrote their vault storage
+        vault: [latest, 1.21.4, 1.13.2, 1.12.2, 1.12.1, 0.11.5]
+    env:
+      MISE_VAULT_VERSION: ${{ matrix.vault }}
     steps:
       # https://github.com/actions/checkout/releases
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -26,6 +36,23 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # installs vault, the tests against a real vault fail on CI when it is missing
+      # https://github.com/jdx/mise-action/releases
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+
+      - run: vault version
+
       - run: go build ./...
 
       - run: go test ./...
+
+  # the main ruleset requires a check named test, matrix jobs report as "go (vault x)"
+  test:
+    if: always()
+    needs: go
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: test "${RESULT}" = success
+        env:
+          RESULT: ${{ needs.go.result }}

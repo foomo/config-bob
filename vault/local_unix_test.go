@@ -65,7 +65,11 @@ func TestLocalOpenCopyCleansUpWhenVaultFails(t *testing.T) {
 
 func TestLocalOpenCopyWithRealVault(t *testing.T) {
 	if _, err := exec.LookPath("vault"); err != nil {
-		t.Skip("vault binary not in PATH")
+		// CI installs vault, a skip there would hide the tests against a real vault
+		if os.Getenv("CI") != "" {
+			t.Fatal("vault binary not in PATH")
+		}
+		t.Skip("vault binary not in PATH, run mise install")
 	}
 	// initialise a throwaway vault with a single unseal key on its own random port
 	folder := t.TempDir()

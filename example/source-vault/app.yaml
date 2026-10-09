@@ -1,0 +1,3 @@
+user: {{ secret "secret/app.user" }}
+password: {{ json (secret "secret/app.password") }}
+apiKey: {{ secret "/secret/example.com.api-key" }}
