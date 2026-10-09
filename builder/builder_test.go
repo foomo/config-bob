@@ -206,10 +206,10 @@ services: plain
 	data, err := readData([]string{base, overlay}, false)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{
-		"global": map[any]any{
+		"global": map[string]any{
 			"env":   "stage",
 			"hosts": []any{"c"},
-			"db":    map[any]any{"host": "mongo", "port": 27018},
+			"db":    map[string]any{"host": "mongo", "port": 27018},
 		},
 		"services": "plain",
 	}, data)
@@ -236,7 +236,7 @@ func TestReadDataShallowMerge(t *testing.T) {
 
 	data, err := readData([]string{base, overlay}, true)
 	require.NoError(t, err)
-	require.Equal(t, map[string]any{"db": map[any]any{"port": 2}, "name": "shop"}, data)
+	require.Equal(t, map[string]any{"db": map[string]any{"port": 2}, "name": "shop"}, data)
 }
 
 func TestReadDataMergeLimits(t *testing.T) {
@@ -248,8 +248,47 @@ func TestReadDataMergeLimits(t *testing.T) {
 
 	data, err := readData([]string{base, overlay}, false)
 	require.NoError(t, err)
-	// json and yaml decode nested maps to different types, so they replace instead of merging; null replaces too
-	require.Equal(t, map[string]any{"db": map[any]any{"port": 2}, "cache": nil}, data)
+	// json and yaml maps merge with each other; null replaces
+	require.Equal(t, map[string]any{"db": map[string]any{"host": "mongo", "port": 2}, "cache": nil}, data)
+}
+
+func TestReadDataYAMLDecodesLikeYAMLv2(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "data.yaml")
+	require.NoError(t, os.WriteFile(file, []byte(`
+on: yes
+off: No
+quoted: "no"
+str: !!str off
+tagged: !!bool y
+date: 2020-01-01
+stamp: 2020-01-01T10:00:00Z
+mode: 0755
+nested:
+  list: [ON, n, 'y', 2020-01-01]
+  2: two
+`), 0o644))
+
+	data, err := readData([]string{file}, false)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"on": true, "off": false, "quoted": "no", "str": "off", "tagged": true,
+		"date": "2020-01-01", "stamp": "2020-01-01T10:00:00Z", "mode": 493,
+		"nested": map[any]any{"list": []any{true, false, "y", "2020-01-01"}, 2: "two"},
+	}, data)
+
+	for _, content := range []string{"", "# only a comment\n", "---\n"} {
+		require.NoError(t, os.WriteFile(file, []byte(content), 0o644))
+		data, err := readData([]string{file}, false)
+		require.NoError(t, err, content)
+		require.Equal(t, map[string]any{}, data, content)
+	}
+}
+
+func TestReadDataYAMLRejectsDuplicateKeys(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "data.yaml")
+	require.NoError(t, os.WriteFile(file, []byte("a: 1\na: 2\n"), 0o644))
+	_, err := readData([]string{file}, false)
+	require.ErrorContains(t, err, `mapping key "a" already defined`)
 }
 
 func TestRawSecretMissingPropHidesValues(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v3"
 )
 
 func Build(args *Args) (*ProcessingResult, error) {
@@ -148,7 +148,7 @@ func readData(files []string, shallow bool) (any, error) {
 		if strings.HasSuffix(file, ".json") {
 			err = json.Unmarshal(dataBytes, &fileData)
 		} else if strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml") {
-			err = yaml.Unmarshal(dataBytes, &fileData)
+			err = unmarshalYAML(dataBytes, &fileData)
 		} else {
 			return nil, errors.New("unsupported data file format i need .json, .yml or .yaml")
 		}
@@ -165,6 +165,44 @@ func readData(files []string, shallow bool) (any, error) {
 	return data, nil
 }
 
+// yaml11Bools are the YAML 1.1 booleans yaml.v2 decoded, which yaml.v3 leaves as strings
+var yaml11Bools = map[string]string{
+	"y": "true", "Y": "true", "yes": "true", "Yes": "true", "YES": "true", "on": "true", "On": "true", "ON": "true",
+	"n": "false", "N": "false", "no": "false", "No": "false", "NO": "false", "off": "false", "Off": "false", "OFF": "false",
+}
+
+// unmarshalYAML decodes data files like yaml.v2 did, so existing templates render the same:
+// YAML 1.1 booleans stay booleans and plain timestamps stay strings
+func unmarshalYAML(in []byte, out any) error {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(in, &doc); err != nil {
+		return err
+	}
+	if doc.Kind == 0 {
+		return nil
+	}
+	yaml11Values(&doc)
+	return doc.Decode(out)
+}
+
+func yaml11Values(n *yaml.Node) {
+	for i, c := range n.Content {
+		// keys keep their string form, templates address them by name
+		if n.Kind == yaml.MappingNode && i%2 == 0 {
+			continue
+		}
+		if c.Kind == yaml.ScalarNode {
+			plain := c.Style == 0
+			if b, ok := yaml11Bools[c.Value]; ok && (plain && c.Tag == "!!str" || c.Tag == "!!bool") {
+				c.Tag, c.Value = "!!bool", b
+			} else if plain && c.Tag == "!!timestamp" {
+				c.Tag = "!!str"
+			}
+		}
+		yaml11Values(c)
+	}
+}
+
 // mergeData deep merges src into dst: nested maps merge key by key, any other value from src replaces dst
 func mergeData(dst, src any) any {
 	switch s := src.(type) {
@@ -176,7 +214,7 @@ func mergeData(dst, src any) any {
 			return d
 		}
 	case map[any]any:
-		// yaml.v2 decodes nested maps with interface keys
+		// yaml decodes maps with non-string keys with interface keys
 		if d, ok := dst.(map[any]any); ok {
 			for k, v := range s {
 				d[k] = mergeData(d[k], v)

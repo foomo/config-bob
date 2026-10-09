@@ -9,8 +9,8 @@ import (
 	"runtime"
 
 	"github.com/foomo/htpasswd"
+	"go.yaml.in/yaml/v3"
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/yaml.v2"
 )
 
 // HtpasswdConfig config for htpasswd files
