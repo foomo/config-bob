@@ -16,13 +16,24 @@ type Args struct {
 }
 
 func GetBuilderArgs(args []string) (ba *Args, err error) {
-	ba = &Args{
-		TargetFolder: "",
-	}
 	if len(args) < 2 {
 		return nil, errors.New("i need at least a source folder and a target folder")
 	}
-	for _, arg := range args[0 : len(args)-1] {
+	ba, err = GetCheckArgs(args[0 : len(args)-1])
+	if err != nil {
+		return nil, err
+	}
+	ba.TargetFolder = args[len(args)-1]
+	return ba, nil
+}
+
+// GetCheckArgs reads source folders and data files like GetBuilderArgs, without a target folder
+func GetCheckArgs(args []string) (ba *Args, err error) {
+	ba = &Args{}
+	if len(args) < 1 {
+		return nil, errors.New("i need at least a source folder")
+	}
+	for _, arg := range args {
 		f, err := os.Stat(arg)
 		if err != nil {
 			return nil, errors.New("arg: \"" + arg + "\" is not a file / folder")
@@ -37,6 +48,5 @@ func GetBuilderArgs(args []string) (ba *Args, err error) {
 			}
 		}
 	}
-	ba.TargetFolder = args[len(args)-1]
 	return ba, nil
 }

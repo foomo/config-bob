@@ -27,7 +27,10 @@ func Build(args *Args) (*ProcessingResult, error) {
 		return nil, errors.New("could not read data from: " + strings.Join(args.DataFiles, ", ") + " :: " + err.Error())
 	}
 
-	var results []*ProcessingResult
+	var (
+		results []*ProcessingResult
+		errs    []error
+	)
 
 	if len(args.SourceFolders) == 0 {
 		return nil, errors.New("there has to be at least one source folder")
@@ -39,9 +42,13 @@ func Build(args *Args) (*ProcessingResult, error) {
 
 		result, err := processFolder(sourceFolder, data)
 		if err != nil {
-			return nil, err
+			errs = append(errs, err)
+			continue
 		}
 		results = append(results, result)
+	}
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 	if len(results) == 0 {
 		return nil, nil

@@ -117,6 +117,30 @@ func TestProcessTemplateError(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestBuildReportsEveryTemplateError(t *testing.T) {
+	a, b := t.TempDir(), t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(a, "ok.txt"), []byte("fine"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(a, "one.txt"), []byte("{{ .missing }}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(a, "two.txt"), []byte("{{ .gone }}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(b, "three.txt"), []byte("{{ broken"), 0o644))
+	_, err := Build(&Args{SourceFolders: []string{a, b}})
+	require.Error(t, err)
+	for _, name := range []string{"one.txt", "two.txt", "three.txt"} {
+		require.ErrorContains(t, err, name)
+	}
+	require.NotContains(t, err.Error(), "ok.txt")
+}
+
+func TestDummySecretsRenderAnyProp(t *testing.T) {
+	DummySecrets = true
+	t.Cleanup(func() { DummySecrets = false })
+	v, err := rawSecret("secret/mongo.uri")
+	require.NoError(t, err)
+	require.Equal(t, "dummy-secret:secret/mongo.uri", v)
+	_, err = rawSecret("no-prop")
+	require.Error(t, err, "malformed keys must still fail a check")
+}
+
 func TestProcessCopyPrefix(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".bobcopy"), []byte("raw.txt"), 0o644))
