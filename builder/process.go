@@ -65,8 +65,9 @@ func processFolder(folderPath string, data any) (result *ProcessingResult, err e
 	}
 
 	var (
-		g  errgroup.Group
-		mu sync.Mutex
+		g    errgroup.Group
+		mu   sync.Mutex
+		errs []error
 	)
 	// bound parallel templates, each may start op processes or vault requests
 	g.SetLimit(runtime.NumCPU() * 4)
@@ -74,18 +75,22 @@ func processFolder(folderPath string, data any) (result *ProcessingResult, err e
 		run := !isCopied(file, copiedFiles)
 		g.Go(func() error {
 			fr, err := processFile(path.Join(folderPath, file), data, run)
-			if err != nil {
-				return err
-			}
 			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				// collect instead of returning, so one run reports every broken template
+				errs = append(errs, err)
+				return nil
+			}
 			// keyed relative to folderPath: WriteProcessingResult joins the key onto the target folder
 			p.Files[file] = fr
-			mu.Unlock()
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
-		return nil, err
+	_ = g.Wait()
+	if len(errs) > 0 {
+		slices.SortFunc(errs, func(a, b error) int { return strings.Compare(a.Error(), b.Error()) })
+		return nil, errors.Join(errs...)
 	}
 	return p, nil
 }
@@ -102,9 +107,15 @@ func isCopied(file string, copiedFiles []string) bool {
 	return false
 }
 
+// DummySecrets renders every secret as a placeholder, so templates can be checked without a vault
+var DummySecrets = false
+
 func rawSecret(key string) (v string, err error) {
 	parts := strings.Split(key, ".")
 	if len(parts) == 2 {
+		if DummySecrets {
+			return "dummy-secret:" + key, nil
+		}
 		secretData, err := vault.Read(parts[0])
 		if err != nil {
 			v = "secret retrieval error: " + err.Error()

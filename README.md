@@ -16,6 +16,16 @@ We needed a simple tool to populate our app configurations with data and **secre
 config-bob build path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
 ```
 
+A failing build reports every broken template at once, not only the first one.
+
+## Checking
+
+```bash
+config-bob check [--dummy-secrets] path/to/data.json path/to/src/dir/a path/to/src/dir/b
+```
+
+`check` renders all templates in memory and writes nothing, so rendered secrets never land on disk. With `--dummy-secrets` every `secret` call renders as `dummy-secret:<path.prop>` without contacting vault, which lets CI validate template syntax and data keys without vault credentials. Without it, `check` reads vault like `build` and also proves that every referenced secret exists.
+
 ### Bobs template helpers
 
 Apart from standard template functions we have added a few extra ones, which should come in handy, when writing configurations:
