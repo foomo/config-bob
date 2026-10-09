@@ -51,6 +51,10 @@ const (
 
 func TestBuildWithTestVault(t *testing.T) {
 	if _, err := exec.LookPath("vault"); err != nil {
+		// CI installs vault, a skip there would hide the tests against a real vault
+		if os.Getenv("CI") != "" {
+			t.Fatal("vault binary not in PATH")
+		}
 		t.Skip("vault binary not in PATH, run mise install")
 	}
 	t.Setenv("CFB_KEYS", testVaultKey)
