@@ -26,6 +26,10 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # installs vault from .mise.toml, so the tests against a real vault run instead of skipping
+      # https://github.com/jdx/mise-action/releases
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+
       - run: go build ./...
 
       - run: go test ./...
