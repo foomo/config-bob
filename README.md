@@ -1,194 +1,144 @@
 [![Test Branch](https://github.com/foomo/config-bob/actions/workflows/test.yml/badge.svg)](https://github.com/foomo/config-bob/actions/workflows/test.yml)
 
-# Bob renders config hierarchies
+# config-bob
 
-Bob helps you to render directory trees of configurations using [golangs templating engine](http://golang.org/pkg/text/template). He renders recursively over an arbitrary number of directory hierarchies executing all files as templates.
+Render directory trees of configuration templates with data files and secrets from [Vault](https://www.vaultproject.io/) or 1Password.
 
-The result will be written into one target directory.
+Bob walks one or more source folders, executes every file as a Go [`text/template`](https://pkg.go.dev/text/template), and writes the results into one target folder. Use it to give apps and Helm charts their configuration and secrets without committing rendered secrets.
 
-## Motivation / why config Bob
-
-We needed a simple tool to populate our app configurations with data and **secrets** to run in docker environments.
-
-## Building
+## Install
 
 ```bash
-config-bob build path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
+# Homebrew (macOS, Linux)
+brew install --cask foomo/config-bob/config-bob
+
+# Go (`config-bob version` prints an empty line for these builds)
+go install github.com/foomo/config-bob@latest
 ```
 
-Several data files are deep merged in the given order: nested maps merge key by key, and any other value (scalars, lists, `null`) from a later file replaces the earlier one. This lets a shared base file carry the defaults and small files carry the overrides. Merge files of the same format: a nested JSON map and a nested YAML map replace each other instead of merging.
+Binaries for macOS and Linux (amd64, arm64) and Windows (amd64) are attached to every [release](https://github.com/foomo/config-bob/releases). Tags carry a `v` prefix, asset names do not:
 
 ```bash
-config-bob build base.yaml stage.yaml path/to/src/dir path/to/target/dir
+curl -fsSL https://github.com/foomo/config-bob/releases/download/v0.9.0/config-bob_0.9.0_linux_amd64.tar.gz | tar -xz config-bob
 ```
 
-Before deep merging, a later file replaced whole top-level keys. To drop nested keys from an earlier file, now set the parent key to `null` or to a new value explicitly, or keep the old behavior with `--deep-merge=false` (flags go before the paths):
+## Usage
 
 ```bash
-config-bob build --deep-merge=false base.yaml stage.yaml path/to/src/dir path/to/target/dir
+config-bob build [flags] [data files...] <source folder>... <target folder>
+config-bob check [flags] [data files...] <source folder>...
+config-bob vault-local <vault folder> [script args...]
+config-bob vault-tree <path in vault>
+config-bob vault-htpasswd <htpasswd.yaml>
+config-bob version
 ```
 
-A failing build reports every broken template at once, not only the first one.
+Flags go before the paths. Arguments ending in `.json`, `.yml` or `.yaml` are data files, folders are source folders, and the last argument of `build` is the target folder.
 
-## Checking
+### build
 
 ```bash
-config-bob check [--dummy-secrets] [--deep-merge=false] path/to/data.json path/to/src/dir/a path/to/src/dir/b
+config-bob build base.yaml stage.yaml templates/common templates/stage out
 ```
 
-`check` renders all templates in memory and writes nothing, so rendered secrets never land on disk. With `--dummy-secrets` every `secret` call renders as `dummy-secret:<path.prop>` without contacting vault, which lets CI validate template syntax and data keys without vault credentials. Without it, `check` reads vault like `build` and also proves that every referenced secret exists. `--deep-merge=false` merges data files like `build --deep-merge=false`.
+- Later source folders overwrite files of earlier ones with the same relative path.
+- Data files are deep merged in order: nested maps merge key by key, any other value (scalars, lists, `null`) from a later file replaces the earlier one. Merge files of the same format; a nested JSON map and a nested YAML map replace each other.
+- `--deep-merge=false` restores the old behavior, where a later file replaced whole top-level keys.
+- `--vault-dir <folder>` builds against a local vault in one step, see [Local vault](#local-vault).
+- A failing build reports every broken template at once and exits non-zero.
 
-- Flags go before the paths.
-- A dummy secret is a placeholder string, so templates that rely on the format of a real secret value only fail in a real build.
-- Files listed in `.bobcopy` are copied, not rendered, so `check` does not inspect them.
+Output folders are created `0700`. Output files keep the template's mode without group or other write access, so make templates that hold secrets `chmod 600`.
 
-### Bobs template helpers
-
-Apart from standard template functions we have added a few extra ones, which should come in handy, when writing configurations:
-
-```
-// secrets helpers
-{{ secret "secret/path/to/secret.prop" }}
-
-// combining secrets with escaping might come in handy
-{{ json (secret "secret/path/to/secret.prop") }}
-```
-
-Data in this example
-
-```go
-data := map[string]any{
-    "hello": "test",
-    "nested": map[string]string{
-        "foo": "bar",
-    },
-}
-```
-
-```
-// template dump some yaml into a file
-{{ yaml . }}
-// output
-hello: test
-nested:
-  foo: bar
-
-// template indent sth - yaml in this case
-{{ indent (yaml .) "  " }}
-// output
-  hello: test
-  nested:
-    foo: bar
-
-
-// template json
-{{ json . }}
-
-// output
-{"hello":"test","nested":{"foo":"bar"}}
-
-// json indented parameters are prefix and indent
-{{ jsonindent . "////" "+++|" }}
-
-// output - note that there is no prefix in the first line also see https://golang.org/pkg/encoding/json/#MarshalIndent
-{
-////"hello": "test",
-////+++|"nested": {
-////+++|+++|"foo": "bar"
-////+++|}
-////}
-
-// template substr, which is essentially string slice access
-{{ substr .hello ":2"}}`
-// output
-te
-
-{{ substr .hello "1:"}}`
-// output
-est
-
-{{ substr .hello "1:2"}}`
-// output
-e
-
-```
-
-We expect this list of helpers to grow.
-
-## Updating htpasswd files
+### check
 
 ```bash
-config-bob vault-htpasswd path/to/htpasswd.yml
+config-bob check --dummy-secrets base.yaml stage.yaml templates/common
 ```
 
-Config bob knows how to sync vault with htpasswd files.
+Renders every template in memory and writes nothing. With `--dummy-secrets`, each `secret` call renders as `dummy-secret:<path.prop>` without contacting Vault, so CI can validate template syntax and data keys without credentials. Without it, `check` reads Vault like `build` and proves every referenced secret exists. Files listed in `.bobcopy` are not checked.
 
-Example config file contents:
+### Source folder control files
 
-```yaml
-# example htpasswd.yml
-relative/path/to/htpasswd-file:
-  - secret/foo
-  - secret/bar
-/absolute/path/to/other/htpasswd-file:
-  - secret/baz
-```
+| File         | Effect                                                                 |
+|--------------|------------------------------------------------------------------------|
+| `.bobignore` | Paths relative to the source folder, one per line, that are skipped.   |
+| `.bobcopy`   | Files or folders, one per line, copied as is instead of being rendered. |
 
-Behaviour:
+## Templates
 
-- creates all necessary folder and files
-- updates existing files with passwords from vault
-- fails, if passwords can not be updated
-- fails, if existing files can not be parsed
+Templates run with `missingkey=error`, so a missing data key fails the build. All [built-in functions](https://pkg.go.dev/text/template#hdr-Functions) are available, plus:
 
-How to add a compatible vault entry:
+| Helper       | Example                                     | Result                                                   |
+|--------------|---------------------------------------------|----------------------------------------------------------|
+| `secret`     | `{{ secret "secret/db.password" }}`         | Property after the last dot of a Vault secret            |
+| `op`         | `{{ op "item-name-or-id" "password" }}`     | Field of a 1Password item via the `op` CLI               |
+| `env`        | `{{ env "HOME" }}`                          | Environment variable, fails when empty                   |
+| `yaml`       | `{{ yaml .resources }}`                     | Value as YAML                                            |
+| `json`       | `{{ json (secret "secret/db.password") }}`  | Value as JSON, also useful for quoting strings           |
+| `jsonindent` | `{{ jsonindent . "" "  " }}`                | Value as indented JSON (prefix, indent)                  |
+| `indent`     | `{{ indent (yaml .resources) "    " }}`     | Every line prefixed                                      |
+| `join`       | `{{ join .hosts "," }}`                     | List joined with a separator                             |
+| `replace`    | `{{ .host \| replace "." "-" }}`            | All occurrences replaced                                 |
+| `substr`     | `{{ substr .name "1:3" }}`                  | Byte slice `[start:end]`, either side may be empty       |
+| `jsescape`   | `{{ jsescape .text }}`                      | String escaped for JavaScript                            |
+| `absPath`    | `{{ absPath "relative/path" }}`             | Absolute path                                            |
 
-```bash
-vault write secret/foo user=foo password=secret
-```
+## Secrets
 
-## Intergration with [vault](https://vaultproject.io/)
+### Vault
 
-When using the secret templating syntax metioned above Bob will be looking up those secrets in a vault server using vault http interface v1.
+`secret` reads KV v1 style secrets whose values are strings. Bob configures its client like the Vault CLI: `VAULT_ADDR`, `VAULT_TOKEN` and the other `VAULT_*` variables, falling back to the Vault token helper. Each secret path is read once per run.
 
-Bob expects the environment variables `VAULT_ADDR` and `VAULT_TOKEN` to be set to know to which vault server to talk to.
+`config-bob vault-tree secret` lists all secrets below a path.
 
-### Running a local vault with Bobs help
+### Local vault
 
-If you want to keep your secrets under version control and you do not want to run a vault server permanently config-bob has a little helper for you.
+Keep an encrypted, file-backed vault next to your templates and start it only when needed. Requires the `vault` binary on `PATH`.
 
 ```bash
 config-bob vault-local path/to/vault-folder
 ```
 
-Bob asks for the unseal keys and the token on every start and never stores them. To skip the prompts set `CFB_KEYS` (comma separated) and `CFB_TOKEN`.
+Bob creates the folder layout on first use, starts Vault on `127.0.0.1:8200`, unseals it, and opens a login shell (or runs the given script) with `VAULT_ADDR` and `VAULT_TOKEN` set. It stops Vault when the shell exits. Unseal keys and token are prompted for and never stored; set `CFB_KEYS` (comma separated) and `CFB_TOKEN` to skip the prompts.
 
-Older versions saved the token and unseal keys in plain text in `~/.cfb/vault-store.json`. Delete that file.
-
-To build against such a vault in one step, for example in CI, pass its folder to `build`:
+To build in one step, for example in CI:
 
 ```bash
-# CFB_KEYS and CFB_TOKEN injected by CI, flags go before the paths
-config-bob build --vault-dir path/to/vault-folder path/to/src/dir path/to/target/dir
+CFB_KEYS=... CFB_TOKEN=... config-bob build --vault-dir path/to/vault-folder templates out
 ```
 
-Bob starts the vault on a temporary copy of the folder's `db`, unseals it, builds, and stops it again, also when the build fails or is interrupted. The committed vault storage is never rewritten. Keys and token come from `CFB_KEYS` and `CFB_TOKEN`, or an interactive prompt.
+Bob serves a temporary copy of the folder's `db` on a random loopback port, builds, and stops Vault again, also when the build fails or is interrupted. The committed storage is never rewritten. The folder's `config.hcl` is not used, so this covers file-storage vaults unsealed with keys, not auto-unseal setups.
 
-The copy runs with Bob's own server config instead of the folder's `config.hcl`: file storage in `db`, plain HTTP on a random `127.0.0.1` port, and mlock disabled. Bob points `VAULT_ADDR` of the build at that port, so a vault already running on `8200` and an inherited `VAULT_ADDR` do not get in the way. This covers vaults with file storage in `db` that unseal with keys; other `config.hcl` settings, such as auto-unseal `seal` blocks, are not used.
+Older versions stored the keys and token in plain text in `~/.cfb/vault-store.json`. Delete that file.
 
-## Integration with 1Password
+### 1Password
 
-We have added a template helper to get fields from 1Password
+`op` calls `op item get <item> --fields <field> --reveal`, so the [1Password CLI](https://developer.1password.com/docs/cli/) must be installed and signed in.
+
+### htpasswd files
+
+`vault-htpasswd` writes bcrypt htpasswd files from Vault secrets that have `user` and `password` properties:
 
 ```yaml
-secret-from-1password: {{ op "name-uuid-or-url-of-entry" "field-name" }}
+# htpasswd.yaml: htpasswd file -> vault paths
+relative/path/to/htpasswd: [secret/foo, secret/bar]
+/absolute/path/to/htpasswd: [secret/baz]
 ```
 
-In order to make this work follow this document [https://support.1password.com/command-line-getting-started/](https://support.1password.com/command-line-getting-started/)
+```bash
+vault write secret/foo user=foo password=secret
+config-bob vault-htpasswd htpasswd.yaml
+```
 
-## Requirements
+## Development
 
-So far Bob has been running on OSX and Linux.
+```bash
+make test   # go test ./...
+make build  # ./config-bob
+```
 
-- [vault](https://vaultproject.io) tested with Vault v0.3.1, but as long as REST API v1 is there I do not expect
+See [AGENTS.md](AGENTS.md) for conventions, compatibility constraints and the release process.
 
+## License
+
+[MPL-2.0](LICENSE)
