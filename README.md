@@ -135,16 +135,20 @@ If you want to keep your secrets under version control and you do not want to ru
 config-bob vault-local path/to/vault-folder
 ```
 
+Bob asks for the unseal keys and the token on every start and never stores them. To skip the prompts set `CFB_KEYS` (comma separated) and `CFB_TOKEN`.
+
+Older versions saved the token and unseal keys in plain text in `~/.cfb/vault-store.json`. Delete that file.
+
 To build against such a vault in one step, for example in CI, pass its folder to `build`:
 
 ```bash
-# CFB_KEYS (comma separated) and CFB_TOKEN injected by CI, flags go before the paths
+# CFB_KEYS and CFB_TOKEN injected by CI, flags go before the paths
 config-bob build --vault-dir path/to/vault-folder path/to/src/dir path/to/target/dir
 ```
 
-Bob starts the vault on a temporary copy of the folder's `db`, unseals it, builds, and stops it again, also when the build fails or is interrupted. The committed vault storage is never rewritten, and nothing is stored in the vault key store. Keys and token come from `CFB_KEYS` and `CFB_TOKEN`, then the vault key store, then an interactive prompt.
+Bob starts the vault on a temporary copy of the folder's `db`, unseals it, builds, and stops it again, also when the build fails or is interrupted. The committed vault storage is never rewritten. Keys and token come from `CFB_KEYS` and `CFB_TOKEN`, or an interactive prompt.
 
-The copy runs with Bob's own server config instead of the folder's `config.hcl`: file storage, plain HTTP on a random `127.0.0.1` port, and mlock disabled. Bob points `VAULT_ADDR` of the build at that port, so a vault already running on `8200` and an inherited `VAULT_ADDR` do not get in the way. This covers vaults with file storage that unseal with keys; settings such as auto-unseal `seal` blocks in `config.hcl` are not used.
+The copy runs with Bob's own server config instead of the folder's `config.hcl`: file storage in `db`, plain HTTP on a random `127.0.0.1` port, and mlock disabled. Bob points `VAULT_ADDR` of the build at that port, so a vault already running on `8200` and an inherited `VAULT_ADDR` do not get in the way. This covers vaults with file storage in `db` that unseal with keys; other `config.hcl` settings, such as auto-unseal `seal` blocks, are not used.
 
 ## Integration with 1Password
 

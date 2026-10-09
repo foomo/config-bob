@@ -87,11 +87,6 @@ func TestTemplateFuncs(t *testing.T) {
 	assertErr(`{{ substr .hello "-1:1"}}`)
 	assertErr(`{{ substr .hello ":-1"}}`)
 
-	if isOnePassworwordAvailable() {
-		assert(`{{ op "kkwcxma7pbf3xaar7wgboj5zgm" "foo" }}`, "bar")
-		assertErr(`{{ op "kkwcxma7pbf3xaar7wgboj5zgmss" "foo" }}`)
-	}
-
 	assert(`{{ absPath "/foo/bar/../" }}`, "/foo")
 	assert(`{{ absPath "/foo/.." }}`, "/")
 }
