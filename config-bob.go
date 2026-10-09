@@ -22,6 +22,7 @@ var Version string
 const helpCommands = `
 Commands:
     build           my main task
+    check           render templates in memory and report every error, write nothing
     vault-local     set up a local vault
     vault-htpasswd  update htpasswd files
     vault-tree      show a recursive listing in vault
@@ -31,6 +32,7 @@ Commands:
 const (
 	commandVersion    = "version"
 	commandBuild      = "build"
+	commandCheck      = "check"
 	commandVaultLocal = "vault-local"
 	commandVaultTree  = "vault-tree"
 	commandHtpasswd   = "vault-htpasswd"
@@ -231,12 +233,14 @@ func getVaultKeys() (vaultKeys []string) {
 func buildCommand() {
 	flags := flag.NewFlagSet(commandBuild, flag.ExitOnError)
 	vaultDir := flags.String("vault-dir", "", "start and unseal the local vault in this folder for the build, keys from CFB_KEYS, token from CFB_TOKEN")
+	deepMerge := flags.Bool("deep-merge", true, "deep merge data files, false lets a later file replace whole top-level keys")
 	flags.Usage = func() {
 		fmt.Println(
 			"usage: ",
 			os.Args[0],
 			commandBuild,
 			"[--vault-dir path/to/vault/folder]",
+			"[--deep-merge=false]",
 			"path/to/source-folder-a",
 			"[ path/to/source-folder-b, ... ]",
 			"[ path/to/data-file.json | data-file.yaml ]",
@@ -251,6 +255,7 @@ func buildCommand() {
 		flags.Usage()
 		os.Exit(1)
 	}
+	builderArgs.ShallowMerge = !*deepMerge
 	stop := func() {}
 	if *vaultDir != "" {
 		if stop, err = openVault(*vaultDir); err != nil {
@@ -312,11 +317,48 @@ func openVault(dir string) (stop func(), err error) {
 	return stop, nil
 }
 
+func checkCommand() {
+	flags := flag.NewFlagSet(commandCheck, flag.ExitOnError)
+	dummySecrets := flags.Bool("dummy-secrets", false, "render every secret as a placeholder instead of reading vault")
+	deepMerge := flags.Bool("deep-merge", true, "deep merge data files, false lets a later file replace whole top-level keys")
+	flags.Usage = func() {
+		fmt.Println(
+			"usage: ",
+			os.Args[0],
+			commandCheck,
+			"[--dummy-secrets]",
+			"[--deep-merge=false]",
+			"path/to/source-folder-a",
+			"[ path/to/source-folder-b, ... ]",
+			"[ path/to/data-file.json | data-file.yaml ]",
+		)
+		flags.PrintDefaults()
+	}
+	_ = flags.Parse(os.Args[2:])
+	checkArgs, err := builder.GetCheckArgs(flags.Args())
+	if err != nil {
+		fmt.Println(err.Error())
+		flags.Usage()
+		os.Exit(1)
+	}
+	builder.DummySecrets = *dummySecrets
+	checkArgs.ShallowMerge = !*deepMerge
+	result, err := builder.Build(checkArgs)
+	if err != nil {
+		fmt.Println("check failed:")
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	fmt.Println("check passed:", len(result.Files), "files rendered, nothing written")
+}
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case commandVersion:
 			versionCommand()
+		case commandCheck:
+			checkCommand()
 		case commandVaultTree:
 			vaultTreeCommand()
 		case commandHtpasswd:

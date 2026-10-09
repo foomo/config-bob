@@ -16,6 +16,32 @@ We needed a simple tool to populate our app configurations with data and **secre
 config-bob build path/to/data.json path/to/src/dir/a path/to/src/dir/b path/to/target/dir
 ```
 
+Several data files are deep merged in the given order: nested maps merge key by key, and any other value (scalars, lists, `null`) from a later file replaces the earlier one. This lets a shared base file carry the defaults and small files carry the overrides. Merge files of the same format: a nested JSON map and a nested YAML map replace each other instead of merging.
+
+```bash
+config-bob build base.yaml stage.yaml path/to/src/dir path/to/target/dir
+```
+
+Before deep merging, a later file replaced whole top-level keys. To drop nested keys from an earlier file, now set the parent key to `null` or to a new value explicitly, or keep the old behavior with `--deep-merge=false` (flags go before the paths):
+
+```bash
+config-bob build --deep-merge=false base.yaml stage.yaml path/to/src/dir path/to/target/dir
+```
+
+A failing build reports every broken template at once, not only the first one.
+
+## Checking
+
+```bash
+config-bob check [--dummy-secrets] [--deep-merge=false] path/to/data.json path/to/src/dir/a path/to/src/dir/b
+```
+
+`check` renders all templates in memory and writes nothing, so rendered secrets never land on disk. With `--dummy-secrets` every `secret` call renders as `dummy-secret:<path.prop>` without contacting vault, which lets CI validate template syntax and data keys without vault credentials. Without it, `check` reads vault like `build` and also proves that every referenced secret exists. `--deep-merge=false` merges data files like `build --deep-merge=false`.
+
+- Flags go before the paths.
+- A dummy secret is a placeholder string, so templates that rely on the format of a real secret value only fail in a real build.
+- Files listed in `.bobcopy` are copied, not rendered, so `check` does not inspect them.
+
 ### Bobs template helpers
 
 Apart from standard template functions we have added a few extra ones, which should come in handy, when writing configurations:
