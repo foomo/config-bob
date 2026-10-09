@@ -99,7 +99,6 @@ func processFolder(folderPath string, data any) (result *ProcessingResult, err e
 // by one of its parent folders
 func isCopied(file string, copiedFiles []string) bool {
 	for _, copyFile := range copiedFiles {
-		copyFile = strings.TrimSuffix(copyFile, "/")
 		if file == copyFile || strings.HasPrefix(file, copyFile+"/") {
 			return true
 		}
@@ -111,21 +110,21 @@ func isCopied(file string, copiedFiles []string) bool {
 var DummySecrets = false
 
 func rawSecret(key string) (v string, err error) {
-	parts := strings.Split(key, ".")
-	if len(parts) == 2 {
+	// the property follows the last dot, so paths may contain dots like secret/example.com.password
+	if i := strings.LastIndex(key, "."); i > 0 && i < len(key)-1 {
 		if DummySecrets {
 			return "dummy-secret:" + key, nil
 		}
-		secretData, err := vault.Read(parts[0])
+		secretPath, prop := key[:i], key[i+1:]
+		secretData, err := vault.Read(secretPath)
 		if err != nil {
 			v = "secret retrieval error: " + err.Error()
 			return v, errors.New(v)
 		}
-		prop := parts[1]
 		s, ok := secretData[prop]
 		if !ok {
 			// list only key names: the values are secrets and this error ends up in build logs
-			return "<prop not found on secret>", fmt.Errorf("property %q is not set for secret %s, available keys: %v", prop, parts[0], slices.Sorted(maps.Keys(secretData)))
+			return "<prop not found on secret>", fmt.Errorf("property %q is not set for secret %s, available keys: %v", prop, secretPath, slices.Sorted(maps.Keys(secretData)))
 		}
 		return s, nil
 	}

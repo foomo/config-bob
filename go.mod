@@ -6,7 +6,6 @@ require (
 	github.com/bgentry/speakeasy v0.2.0
 	github.com/foomo/htpasswd v0.0.0-20200116085101-e3a90e78da9c
 	github.com/hashicorp/vault/api v1.23.0
-	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sync v0.23.0
 	gopkg.in/yaml.v2 v2.4.0
