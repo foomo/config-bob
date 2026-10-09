@@ -26,6 +26,10 @@ config-bob check [--dummy-secrets] path/to/data.json path/to/src/dir/a path/to/s
 
 `check` renders all templates in memory and writes nothing, so rendered secrets never land on disk. With `--dummy-secrets` every `secret` call renders as `dummy-secret:<path.prop>` without contacting vault, which lets CI validate template syntax and data keys without vault credentials. Without it, `check` reads vault like `build` and also proves that every referenced secret exists.
 
+- Flags go before the paths.
+- A dummy secret is a placeholder string, so templates that rely on the format of a real secret value only fail in a real build.
+- Files listed in `.bobcopy` are copied, not rendered, so `check` does not inspect them.
+
 ### Bobs template helpers
 
 Apart from standard template functions we have added a few extra ones, which should come in handy, when writing configurations:
