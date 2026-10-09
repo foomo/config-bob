@@ -189,6 +189,19 @@ func TestReadDataDeepMergesJSON(t *testing.T) {
 	require.Equal(t, map[string]any{"db": map[string]any{"host": "mongo", "port": float64(2)}}, data)
 }
 
+func TestReadDataMergeLimits(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "base.json")
+	overlay := filepath.Join(dir, "overlay.yaml")
+	require.NoError(t, os.WriteFile(base, []byte(`{"db": {"host": "mongo", "port": 1}, "cache": {"ttl": 5}}`), 0o644))
+	require.NoError(t, os.WriteFile(overlay, []byte("db:\n  port: 2\ncache: ~\n"), 0o644))
+
+	data, err := readData([]string{base, overlay})
+	require.NoError(t, err)
+	// json and yaml decode nested maps to different types, so they replace instead of merging; null replaces too
+	require.Equal(t, map[string]any{"db": map[any]any{"port": 2}, "cache": nil}, data)
+}
+
 func TestRawSecretMissingPropHidesValues(t *testing.T) {
 	vault.Dummy = true
 	_, err := rawSecret("secret/db.passwrod")
