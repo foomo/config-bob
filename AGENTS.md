@@ -25,7 +25,7 @@ Run all of them before pushing. Check the exit status of `go test` itself; a pip
 ## Tests
 
 - Unit tests never need a real `vault` or `op` binary or credentials. Fake binaries go on a `t.TempDir()` `PATH`, Vault HTTP goes through `httptest`, and `vault.Dummy = true` stubs secret reads.
-- Tests against a real Vault run when `vault` is on `PATH` (CI installs it with mise) and skip otherwise: `TestLocalOpenCopyWithRealVault` and `TestBuildWithTestVault`.
+- Tests against a real Vault (`TestLocalOpenCopyWithRealVault`, `TestBuildWithTestVault`) skip locally without `vault` on `PATH` and fail on CI. CI runs them for every Vault version in the `test.yml` matrix: the latest and the versions downstream repositories run or that last wrote their storage. Add a version there when a consumer pins a new one; the required `test` check only passes when all matrix jobs pass.
 - `example/vault` is a committed test vault with throwaway credentials (`testVaultKey`, `testVaultToken` in `config-bob_test.go`) and secrets `secret/app` and `secret/example.com`. Open it with `build --vault-dir`, which works on a copy; `vault-local` rewrites its storage. To add a secret, unseal a copy, write it, and copy the changed `db` files back.
 - Tests that depend on file modes, umask, signals or shell scripts live in `*_unix_test.go` files with `//go:build unix`.
 - Set the template file mode explicitly in tests; a strict umask otherwise changes what the test checks.
