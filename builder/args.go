@@ -11,6 +11,8 @@ type Args struct {
 	DataFiles     []string
 	SourceFolders []string
 	TargetFolder  string
+	// ShallowMerge lets a later data file replace whole top-level keys, the behavior before deep merging
+	ShallowMerge bool
 }
 
 func GetBuilderArgs(args []string) (ba *Args, err error) {
