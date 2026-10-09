@@ -8,12 +8,10 @@ import (
 	"maps"
 	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
 
-	"github.com/samber/lo"
 	"gopkg.in/yaml.v2"
 )
 
@@ -65,7 +63,8 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	fmt.Println(line)
 	fmt.Println("building folder structure:")
 	fmt.Println(line)
-	err := os.MkdirAll(targetFolder, 0o744)
+	// owner only: rendered files hold secrets and git checks templates out as 0644
+	err := os.MkdirAll(targetFolder, 0o700)
 	if err != nil {
 		return errors.New("could not create target folder")
 	}
@@ -80,7 +79,7 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	for _, folder := range result.Folders {
 		i++
 		fmt.Println(i, path.Join(targetFolder, folder))
-		err := root.MkdirAll(folder, 0o744)
+		err := root.MkdirAll(folder, 0o700)
 		if err != nil {
 			return err
 		}
@@ -89,10 +88,7 @@ func WriteProcessingResult(targetFolder string, result *ProcessingResult) error 
 	fmt.Println("writing files:")
 	fmt.Println(line)
 	i = 0
-	keys := lo.Keys(result.Files)
-	sort.Strings(keys)
-
-	for _, file := range keys {
+	for _, file := range slices.Sorted(maps.Keys(result.Files)) {
 		processingResult := result.Files[file]
 		i++
 		// keep the template mode but never let others write the output
@@ -195,7 +191,8 @@ func getStuff(root, name string) []string {
 	if err == nil {
 		lines := strings.SplitSeq(string(stuffBytes), "\n")
 		for line := range lines {
-			trimmedLine := strings.TrimSpace(line)
+			// paths are matched without a trailing slash, so "folder/" and "folder" are the same entry
+			trimmedLine := strings.TrimSuffix(strings.TrimSpace(line), "/")
 			if len(trimmedLine) > 0 {
 				stuff = append(stuff, trimmedLine)
 			}
@@ -215,79 +212,50 @@ func fileIsIgnored(root string, p string, ignore []string) bool {
 	return slices.Contains(ignore, trimmedPath)
 }
 
-func getFiles(root string, ignore []string) (files []string, err error) {
-	files, err = filterFiles(root, ignore, func(path string, fileInfo os.FileInfo) bool {
-		tartgetInfo, e := resolve(fileInfo, path)
-		if e != nil {
-			err = e
-		}
-		return !tartgetInfo.IsDir()
+func getFiles(root string, ignore []string) ([]string, error) {
+	return filterFiles(root, ignore, func(info os.FileInfo) bool {
+		return !info.IsDir()
 	})
-	sort.Strings(files)
-	return
 }
 
-func getFolders(root string, ignore []string) (folders []string, err error) {
-	folders, err = filterFiles(root, ignore, func(path string, fileInfo os.FileInfo) bool {
-		targetInfo, e := resolve(fileInfo, path)
-		if e != nil {
-			err = e
-		}
-		return path != root && targetInfo.IsDir()
+func getFolders(root string, ignore []string) ([]string, error) {
+	return filterFiles(root, ignore, func(info os.FileInfo) bool {
+		return info.IsDir()
 	})
-	return
 }
 
-func resolve(info os.FileInfo, p string) (targetInfo os.FileInfo, err error) {
-	if info.Mode()&os.ModeSymlink == os.ModeSymlink {
-		// let us take a look at the target
-		target, err := filepath.EvalSymlinks(p)
-		if err == nil {
-			return os.Stat(target)
-		}
-		return nil, err
-	}
-	return info, nil
-}
-
-func walk(root string, ignore []string, filter func(path string, fileInfo os.FileInfo) (descend bool)) (err error) {
-	f, err := os.Open(root)
+// walk passes each entry below root to filter, symlinks resolved, and descends into the folders filter accepts
+func walk(root string, filter func(path string, info os.FileInfo) (descend bool)) error {
+	entries, err := os.ReadDir(root)
 	if err != nil {
 		return err
 	}
-
-	fileInfos, err := f.Readdir(0)
-	if err != nil {
-		return
-	}
-	for _, fileInfo := range fileInfos {
-		pathname := path.Join(root, fileInfo.Name())
-		targetInfo, err := resolve(fileInfo, pathname)
+	for _, entry := range entries {
+		pathname := path.Join(root, entry.Name())
+		info, err := os.Stat(pathname)
 		if err != nil {
 			return err
 		}
-		// walk func does decide what to do with the errors
-		if filter(pathname, fileInfo) {
-			if targetInfo.IsDir() {
-				err = walk(pathname, ignore, filter)
-				if err != nil {
-					return err
-				}
+		if filter(pathname, info) && info.IsDir() {
+			if err := walk(pathname, filter); err != nil {
+				return err
 			}
 		}
 	}
-	return err
+	return nil
 }
 
-func filterFiles(root string, ignore []string, filter func(path string, fileInfo os.FileInfo) bool) ([]string, error) {
+func filterFiles(root string, ignore []string, filter func(info os.FileInfo) bool) ([]string, error) {
 	var files []string
 	prefix := root + string(os.PathSeparator)
-	err := walk(root, ignore, func(path string, fileInfo os.FileInfo) (descend bool) {
-		if filter(path, fileInfo) && !fileIsIgnored(root, path, ignore) {
-			p := strings.TrimPrefix(path, prefix)
-			files = append(files, p)
+	err := walk(root, func(path string, info os.FileInfo) (descend bool) {
+		if fileIsIgnored(root, path, ignore) {
+			return false
 		}
-		return !fileIsIgnored(root, path, ignore)
+		if filter(info) {
+			files = append(files, strings.TrimPrefix(path, prefix))
+		}
+		return true
 	})
 	sort.Strings(files)
 	return files, err

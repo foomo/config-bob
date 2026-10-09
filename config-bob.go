@@ -10,18 +10,12 @@ import (
 
 	"github.com/bgentry/speakeasy"
 	"github.com/foomo/config-bob/builder"
-	"github.com/foomo/config-bob/config"
 	"github.com/foomo/config-bob/vault"
 	"github.com/foomo/htpasswd"
 )
 
 // Version constant specifies the current version of the script
 var Version string
-
-var (
-	vaultKeyStore    config.KeyStore
-	useVaultKeyStore = false
-)
 
 const helpCommands = `
 Commands:
@@ -39,19 +33,6 @@ const (
 	commandVaultTree  = "vault-tree"
 	commandHtpasswd   = "vault-htpasswd"
 )
-
-func init() {
-	if _, ok := os.LookupEnv("CFB_DISABLE_STORE"); !ok {
-		ks, err := config.NewKeyStore()
-		if err != nil {
-			fmt.Println("VAULT-STORE: Could not initialize vault key store, not using vault store", err)
-		} else {
-			fmt.Println("VAULT-STORE: Enabled")
-			useVaultKeyStore = true
-			vaultKeyStore = ks
-		}
-	}
-}
 
 func isHelpFlag(arg string) bool {
 	switch arg {
@@ -137,8 +118,8 @@ func vaultLocalCommand() {
 			os.Exit(1)
 		}
 
-		vaultKeys := getVaultKeys(vaultFolder)
-		vaultToken := getVaultToken(vaultFolder)
+		vaultKeys := getVaultKeys()
+		vaultToken := getVaultToken()
 		_ = os.Setenv("VAULT_TOKEN", vaultToken)
 
 		if len(vaultKeys) > 0 {
@@ -151,18 +132,6 @@ func vaultLocalCommand() {
 				fmt.Println("could not unseal vault with key", i+1, err)
 			} else {
 				fmt.Println("unseal key", i+1, "accepted, sealed:", sealed)
-				// STORE VALID CREDENTIALS FOR VAULT
-				fmt.Println("VAULT-STORE: Persisting valid token/key values for vault")
-				if useVaultKeyStore {
-					storeErr := vaultKeyStore.Store(config.VaultCredentials{
-						Path:  vaultFolder,
-						Token: vaultToken,
-						Keys:  vaultKeys,
-					})
-					if storeErr != nil {
-						fmt.Println("VAULT-STORE: Error ocurred while persiting vault: ", storeErr.Error())
-					}
-				}
 			}
 		}
 
@@ -177,18 +146,22 @@ func vaultLocalCommand() {
 			cmd = exec.Command(os.Getenv("SHELL"), params...)
 		}
 
-		go func() {
-			vaultRunErr := <-chanVaultErr
-			_ = cmd.Process.Kill()
-			fmt.Println("vault died on us")
-			if vaultRunErr != nil {
-				fmt.Println("vault error", vaultRunErr.Error())
-			}
-		}()
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		runErr := cmd.Run()
+		// start before watching vault, so a vault that died during the prompts finds a process to kill
+		runErr := cmd.Start()
+		if runErr == nil {
+			go func() {
+				vaultRunErr := <-chanVaultErr
+				_ = cmd.Process.Kill()
+				fmt.Println("vault died on us")
+				if vaultRunErr != nil {
+					fmt.Println("vault error", vaultRunErr.Error())
+				}
+			}()
+			runErr = cmd.Wait()
+		}
 		if runErr != nil {
 			fmt.Println("shell exit:", runErr.Error())
 		}
@@ -209,18 +182,11 @@ func vaultLocalCommand() {
 	}
 }
 
-func getVaultToken(vaultFolder string) string {
+func getVaultToken() string {
 	vaultToken := os.Getenv("CFB_TOKEN")
 	if vaultToken != "" {
 		fmt.Println("Using token from CFB_TOKEN environment variable")
 		return vaultToken
-	}
-
-	if useVaultKeyStore {
-		if cred, ok := vaultKeyStore.Lookup(vaultFolder); ok {
-			fmt.Println("VAULT-STORE: Using token from existing vault store")
-			return cred.Token
-		}
 	}
 
 	vaultToken, err := speakeasy.Ask("enter vault token:")
@@ -235,18 +201,12 @@ func getVaultToken(vaultFolder string) string {
 	return vaultToken
 }
 
-func getVaultKeys(vaultFolder string) (vaultKeys []string) {
+func getVaultKeys() (vaultKeys []string) {
 	environmentKeys := os.Getenv("CFB_KEYS")
 	if environmentKeys != "" {
 		fmt.Println("Using key from CFB_KEYS environment variable")
 		vaultKeys = strings.Split(environmentKeys, ",")
 		return vaultKeys
-	}
-	if useVaultKeyStore {
-		if cred, ok := vaultKeyStore.Lookup(vaultFolder); ok {
-			fmt.Println("VAULT-STORE: Using keys from existing vault store")
-			return cred.Keys
-		}
 	}
 
 	fmt.Println("Enter keys to unseal, terminate with empty entry")

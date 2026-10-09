@@ -2,10 +2,12 @@ package builder
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
 
 	"github.com/foomo/config-bob/vault"
@@ -27,6 +29,18 @@ func TestIgnore(t *testing.T) {
 	if ignore[2] != "httpd/ignore-me.txt" {
 		t.Fatal("ignore file parse error")
 	}
+}
+
+func TestIgnoreFolderWithTrailingSlash(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".bobignore"), []byte("private/\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "private"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "private", "notes.txt"), []byte("do not ship"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "app.conf"), []byte("ok"), 0o644))
+	r, err := processFolder(dir, nil)
+	require.NoError(t, err)
+	require.Empty(t, r.Folders)
+	require.Equal(t, []string{"app.conf"}, slices.Sorted(maps.Keys(r.Files)))
 }
 
 func TestFilesAndFolders(t *testing.T) {
@@ -219,6 +233,17 @@ func TestRawSecretMissingPropHidesValues(t *testing.T) {
 	_, err := rawSecret("secret/db.passwrod")
 	require.ErrorContains(t, err, "password")
 	require.NotContains(t, err.Error(), "dummy-password")
+}
+
+func TestRawSecretPathWithDots(t *testing.T) {
+	vault.Dummy = true
+	v, err := rawSecret("secret/example.com.user")
+	require.NoError(t, err)
+	require.Equal(t, "user-fromsecret/example.com", v)
+	for _, key := range []string{"secret/db", "secret/db.", ".user"} {
+		_, err := rawSecret(key)
+		require.ErrorContains(t, err, "syntax error", key)
+	}
 }
 
 func writeOne(t *testing.T, target, content string, perm os.FileMode) {

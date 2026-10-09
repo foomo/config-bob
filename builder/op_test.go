@@ -1,33 +1,31 @@
+//go:build unix
+
 package builder
 
 import (
 	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func isOnePassworwordAvailable() bool {
-	foundSession := false
-	for _, kv := range os.Environ() {
-		parts := strings.Split(kv, "=")
-		if len(parts) > 0 && strings.HasPrefix(parts[0], "OP_SESSION_") {
-			foundSession = true
-			break
-		}
-	}
-	return foundSession
-}
-
 func TestOnePassword(t *testing.T) {
-	if !isOnePassworwordAvailable() {
-		t.Skip("no op session found")
-	}
-	v, err := onePassword("kkwcxma7pbf3xaar7wgboj5zgm", "foo")
-	assert.NoError(t, err)
-	assert.Equal(t, "bar", v)
-	v, err = onePassword("kkwcxma7pbf3xaar7wgboj5zgmsss", "foo")
-	assert.Error(t, err)
-	assert.Empty(t, v)
+	dir := t.TempDir()
+	// the fake op echoes its arguments, so the test pins the 1Password CLI v2 syntax
+	script := "#!/bin/sh\n[ \"$1\" = item ] || exit 1\necho \"$@\"\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "op"), []byte(script), 0o755))
+	t.Setenv("PATH", dir)
+
+	v, err := onePassword("my-item", "password")
+	require.NoError(t, err)
+	require.Equal(t, "item get my-item --fields password --reveal", v)
+
+	out, err := process("op.txt", `user: {{ op "other" "user" }};`, nil)
+	require.NoError(t, err)
+	require.Equal(t, "user: item get other --fields user --reveal;", string(out), "the trailing newline of op must not leak into templates")
+
+	t.Setenv("PATH", t.TempDir())
+	_, err = onePassword("my-item", "password")
+	require.Error(t, err)
 }
