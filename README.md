@@ -138,7 +138,8 @@ config-bob vault-local path/to/vault-folder
 To build against such a vault in one step, for example in CI, pass its folder to `build`:
 
 ```bash
-CFB_KEYS=key1,key2 CFB_TOKEN=token config-bob build --vault-dir path/to/vault-folder path/to/src/dir path/to/target/dir
+# CFB_KEYS (comma separated) and CFB_TOKEN injected by CI, flags go before the paths
+config-bob build --vault-dir path/to/vault-folder path/to/src/dir path/to/target/dir
 ```
 
 Bob starts the vault on a temporary copy of the folder, unseals it, builds, and stops it again, also when the build fails or is interrupted. The committed vault storage is never rewritten, and nothing is stored in the vault key store. Keys and token come from `CFB_KEYS` and `CFB_TOKEN`, then the vault key store, then an interactive prompt. The vault must listen on `127.0.0.1:8200`, and `build` refuses to start when another vault already listens there.

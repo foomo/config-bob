@@ -297,6 +297,8 @@ func buildCommand() {
 			fmt.Println("could not open vault:", err.Error())
 			os.Exit(1)
 		}
+		// covers panics, stop is idempotent
+		defer stop()
 	}
 	err = build(builderArgs)
 	// stop before exiting, os.Exit skips deferred calls
@@ -329,21 +331,25 @@ func openVault(dir string) (stop func(), err error) {
 	}
 	vault.LocalSetEnv()
 	vaultKeys := getVaultKeys(vaultFolder)
-	if err := os.Setenv("VAULT_TOKEN", getVaultToken(vaultFolder)); err != nil {
-		return nil, err
-	}
+	vaultToken := getVaultToken(vaultFolder)
+	// registered after the prompts so ctrl-c still aborts them, and before the start so a signal
+	// during start or unseal waits for LocalOpenCopy instead of leaving the vault holding its port
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	stop, err = vault.LocalOpenCopy(vaultFolder, vaultKeys)
 	if err != nil {
 		return nil, err
 	}
-	// an interrupted build must not leave the vault holding its port
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-signals
 		stop()
 		os.Exit(130)
 	}()
+	// set after the start, so the vault server does not inherit the token
+	if err := os.Setenv("VAULT_TOKEN", vaultToken); err != nil {
+		stop()
+		return nil, err
+	}
 	return stop, nil
 }
 
