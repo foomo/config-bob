@@ -12,8 +12,10 @@ config-bob is a single-binary Go CLI that renders template trees with data files
 ## Commands
 
 ```bash
+mise install                 # vault from .mise.toml, needed for the real vault tests
 make test                    # go test ./..., the same as CI
 make build                   # ./config-bob
+make vault-example           # build example/source-vault against the test vault
 go test -race ./...
 go vet ./... && GOOS=windows go vet ./...
 ```
@@ -22,8 +24,9 @@ Run all of them before pushing. Check the exit status of `go test` itself; a pip
 
 ## Tests
 
-- Tests never need a real `vault` or `op` binary or credentials. Fake binaries go on a `t.TempDir()` `PATH`, Vault HTTP goes through `httptest`, and `vault.Dummy = true` stubs secret reads.
-- The `--vault-dir` integration test in `vault/local_unix_test.go` runs only when `vault` is on `PATH`; CI skips it, so run it locally after touching `vault/local.go`.
+- Unit tests never need a real `vault` or `op` binary or credentials. Fake binaries go on a `t.TempDir()` `PATH`, Vault HTTP goes through `httptest`, and `vault.Dummy = true` stubs secret reads.
+- Tests against a real Vault run when `vault` is on `PATH` (CI installs it with mise) and skip otherwise: `TestLocalOpenCopyWithRealVault` and `TestBuildWithTestVault`.
+- `example/vault` is a committed test vault with throwaway credentials (`testVaultKey`, `testVaultToken` in `config-bob_test.go`) and secrets `secret/app` and `secret/example.com`. Open it with `build --vault-dir`, which works on a copy; `vault-local` rewrites its storage. To add a secret, unseal a copy, write it, and copy the changed `db` files back.
 - Tests that depend on file modes, umask, signals or shell scripts live in `*_unix_test.go` files with `//go:build unix`.
 - Set the template file mode explicitly in tests; a strict umask otherwise changes what the test checks.
 - Use `assert`, not `require`, inside handler goroutines.
