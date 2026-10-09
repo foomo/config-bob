@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -23,7 +24,7 @@ func Build(args *Args) (*ProcessingResult, error) {
 	fmt.Println("source folders :", strings.Join(args.SourceFolders, ", "))
 	fmt.Println("target folder  :", args.TargetFolder)
 	fmt.Println(line)
-	data, err := readData(args.DataFiles)
+	data, err := readData(args.DataFiles, args.ShallowMerge)
 	if err != nil {
 		return nil, errors.New("could not read data from: " + strings.Join(args.DataFiles, ", ") + " :: " + err.Error())
 	}
@@ -128,7 +129,7 @@ func replaceFile(root *os.Root, name string, data []byte, perm os.FileMode) erro
 	return err
 }
 
-func readData(files []string) (any, error) {
+func readData(files []string, shallow bool) (any, error) {
 	if len(files) == 0 {
 		return nil, nil
 	}
@@ -152,7 +153,11 @@ func readData(files []string) (any, error) {
 			return nil, fmt.Errorf("could not parse data file %s: %w", file, err)
 		}
 
-		mergeData(data, fileData)
+		if shallow {
+			maps.Copy(data, fileData)
+		} else {
+			mergeData(data, fileData)
+		}
 	}
 	return data, nil
 }

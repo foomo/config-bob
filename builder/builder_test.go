@@ -139,7 +139,7 @@ func TestReadDataRejectsBrokenFile(t *testing.T) {
 	broken := filepath.Join(dir, "prod.yml")
 	require.NoError(t, os.WriteFile(base, []byte("host: staging"), 0o644))
 	require.NoError(t, os.WriteFile(broken, []byte("host: [production"), 0o644))
-	_, err := readData([]string{base, broken})
+	_, err := readData([]string{base, broken}, false)
 	require.ErrorContains(t, err, broken)
 }
 
@@ -165,7 +165,7 @@ global:
 services: plain
 `), 0o644))
 
-	data, err := readData([]string{base, overlay})
+	data, err := readData([]string{base, overlay}, false)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{
 		"global": map[any]any{
@@ -184,9 +184,21 @@ func TestReadDataDeepMergesJSON(t *testing.T) {
 	require.NoError(t, os.WriteFile(base, []byte(`{"db": {"host": "mongo", "port": 1}}`), 0o644))
 	require.NoError(t, os.WriteFile(overlay, []byte(`{"db": {"port": 2}}`), 0o644))
 
-	data, err := readData([]string{base, overlay})
+	data, err := readData([]string{base, overlay}, false)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{"db": map[string]any{"host": "mongo", "port": float64(2)}}, data)
+}
+
+func TestReadDataShallowMerge(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "base.yaml")
+	overlay := filepath.Join(dir, "overlay.yaml")
+	require.NoError(t, os.WriteFile(base, []byte("db:\n  host: mongo\n  port: 1\nname: shop\n"), 0o644))
+	require.NoError(t, os.WriteFile(overlay, []byte("db:\n  port: 2\n"), 0o644))
+
+	data, err := readData([]string{base, overlay}, true)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"db": map[any]any{"port": 2}, "name": "shop"}, data)
 }
 
 func TestReadDataMergeLimits(t *testing.T) {
@@ -196,7 +208,7 @@ func TestReadDataMergeLimits(t *testing.T) {
 	require.NoError(t, os.WriteFile(base, []byte(`{"db": {"host": "mongo", "port": 1}, "cache": {"ttl": 5}}`), 0o644))
 	require.NoError(t, os.WriteFile(overlay, []byte("db:\n  port: 2\ncache: ~\n"), 0o644))
 
-	data, err := readData([]string{base, overlay})
+	data, err := readData([]string{base, overlay}, false)
 	require.NoError(t, err)
 	// json and yaml decode nested maps to different types, so they replace instead of merging; null replaces too
 	require.Equal(t, map[string]any{"db": map[any]any{"port": 2}, "cache": nil}, data)

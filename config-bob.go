@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -266,26 +267,29 @@ func getVaultKeys(vaultFolder string) (vaultKeys []string) {
 }
 
 func buildCommand() {
-	buildUsage := func() {
+	flags := flag.NewFlagSet(commandBuild, flag.ExitOnError)
+	deepMerge := flags.Bool("deep-merge", true, "deep merge data files, false lets a later file replace whole top-level keys")
+	flags.Usage = func() {
 		fmt.Println(
 			"usage: ",
 			os.Args[0],
 			commandBuild,
+			"[--deep-merge=false]",
 			"path/to/source-folder-a",
 			"[ path/to/source-folder-b, ... ]",
 			"[ path/to/data-file.json | data-file.yaml ]",
 			"path/to/target/dir",
 		)
-		os.Exit(1)
+		flags.PrintDefaults()
 	}
-	if isHelpFlag(os.Args[2]) {
-		buildUsage()
-	}
-	builderArgs, err := builder.GetBuilderArgs(os.Args[2:])
+	_ = flags.Parse(os.Args[2:])
+	builderArgs, err := builder.GetBuilderArgs(flags.Args())
 	if err != nil {
 		fmt.Println(err.Error())
-		buildUsage()
+		flags.Usage()
+		os.Exit(1)
 	} else {
+		builderArgs.ShallowMerge = !*deepMerge
 		result, err := builder.Build(builderArgs)
 		if err != nil {
 			fmt.Println("a build error has occurred:", err.Error())
