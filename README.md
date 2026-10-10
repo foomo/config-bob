@@ -42,7 +42,8 @@ config-bob build base.yaml stage.yaml templates/common templates/stage out
 ```
 
 - Later source folders overwrite files of earlier ones with the same relative path.
-- Data files are deep merged in order: nested maps merge key by key, any other value (scalars, lists, `null`) from a later file replaces the earlier one. Merge files of the same format; a nested JSON map and a nested YAML map replace each other.
+- Data files are deep merged in order: nested maps merge key by key, any other value (scalars, lists, `null`) from a later file replaces the earlier one. JSON and YAML files merge with each other.
+- YAML data files keep the YAML 1.1 values of earlier releases: `yes`, `no`, `on`, `off`, `y` and `n` are booleans and unquoted dates are strings. A key defined twice in one mapping fails the build instead of the last value winning.
 - `--deep-merge=false` restores the old behavior, where a later file replaced whole top-level keys.
 - `--vault-dir <folder>` builds against a local vault in one step, see [Local vault](#local-vault).
 - A failing build reports every broken template at once and exits non-zero.
@@ -73,7 +74,7 @@ Templates run with `missingkey=error`, so a missing data key fails the build. Al
 | `secret`     | `{{ secret "secret/db.password" }}`         | Property after the last dot of a Vault secret            |
 | `op`         | `{{ op "item-name-or-id" "password" }}`     | Field of a 1Password item via the `op` CLI               |
 | `env`        | `{{ env "HOME" }}`                          | Environment variable, fails when empty                   |
-| `yaml`       | `{{ yaml .resources }}`                     | Value as YAML                                            |
+| `yaml`       | `{{ yaml .resources }}`                     | Value as YAML, long strings stay on one line             |
 | `json`       | `{{ json (secret "secret/db.password") }}`  | Value as JSON, also useful for quoting strings           |
 | `jsonindent` | `{{ jsonindent . "" "  " }}`                | Value as indented JSON (prefix, indent)                  |
 | `indent`     | `{{ indent (yaml .resources) "    " }}`     | Every line prefixed                                      |

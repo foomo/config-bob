@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 	"strings"
 	"text/template"
 
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v3"
 )
 
 // TemplateFuncs knock yourself out - this is what builder user for templating
@@ -73,11 +74,15 @@ var TemplateFuncs = template.FuncMap{
 		return strings.Join(indented, "\n"), nil
 	},
 	"yaml": func(value any) (v string, err error) {
-		yamlBytes, err := yaml.Marshal(value)
-		if err != nil {
+		var yamlBytes bytes.Buffer
+		enc := yaml.NewEncoder(&yamlBytes)
+		// the yaml.v2 layout: two space indent, list items flush with their key
+		enc.SetIndent(2)
+		enc.CompactSeqIndent()
+		if err := enc.Encode(value); err != nil {
 			return fmt.Sprintf("%q", value), err
 		}
-		return strings.Trim(string(yamlBytes), "\n"), nil
+		return strings.Trim(yamlBytes.String(), "\n"), nil
 	},
 	"jsescape": func(value string) (v string, err error) {
 		return template.JSEscapeString(value), nil

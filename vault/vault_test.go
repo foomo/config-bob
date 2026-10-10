@@ -6,7 +6,7 @@ import (
 
 	"github.com/foomo/htpasswd"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v3"
 )
 
 func TestHtpasswd(t *testing.T) {

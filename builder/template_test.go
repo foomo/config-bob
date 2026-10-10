@@ -18,6 +18,18 @@ func renderTemplate(templ string, data map[string]any) (string, error) {
 	return string(result), err
 }
 
+func TestYAMLKeepsV2Layout(t *testing.T) {
+	data := map[string]any{"a": []any{map[string]any{"b": "c", "d": []any{1}}, "yes"}}
+	result, err := renderTemplate(`{{ yaml . }}`, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// list items stay flush with their key and YAML 1.1 bool strings stay quoted
+	if expected := "a:\n- b: c\n  d:\n  - 1\n- \"yes\""; result != expected {
+		t.Fatalf("expected %q got %q", expected, result)
+	}
+}
+
 func TestTemplateFuncs(t *testing.T) {
 	data := map[string]any{
 		"hello": "test",
