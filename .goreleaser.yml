@@ -34,13 +34,13 @@ homebrew_casks:
       name: homebrew-config-bob
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
 
-    caveats: "config-bob -h"
+    caveats: "Run config-bob to list commands"
     homepage: "https://github.com/foomo/config-bob"
     description: "CLI utility to generate secure configurations"
     # the binaries are not notarized, so macOS would quarantine them
     hooks:
       post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/config-bob"]
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/config-bob"]
           end
